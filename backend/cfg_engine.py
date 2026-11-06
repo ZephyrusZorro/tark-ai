@@ -207,22 +207,34 @@ class CFGBuilder(ast.NodeVisitor):
     def _generate_mermaid(self) -> str:
         lines = ["flowchart TD"]
         for b_id, b in self.blocks.items():
-            label = "<br>".join(b.statements[:2]) if b.statements else b.id
-            # Clean special characters
-            label = label.replace('"', "'").replace("[", "(").replace("]", ")")
+            raw_label = " | ".join(b.statements[:2]) if b.statements else b.id
+            # Clean and escape characters so Mermaid parser never crashes on operators (<, >, quotes)
+            clean_label = (
+                raw_label.replace('&', '&amp;')
+                         .replace('<', '&lt;')
+                         .replace('>', '&gt;')
+                         .replace('"', '#quot;')
+                         .replace("'", '#39;')
+                         .replace('{', '(')
+                         .replace('}', ')')
+                         .replace('[', '(')
+                         .replace(']', ')')
+                         .replace('\\', '/')
+            )
+            clean_label = " ".join(clean_label.split())[:50]
 
-            if b.block_type == "BRANCH":
-                lines.append(f'  {b_id}{{"{b_id}: {label}"}}')
-            elif b.block_type == "LOOP_HEADER":
-                lines.append(f'  {b_id}{{"{b_id}: {label}"}}')
-            elif b.block_type == "TERMINAL":
-                lines.append(f'  {b_id}(["{b_id}: {label}"])')
+            if b.block_type in ("BRANCH", "LOOP_HEADER"):
+                lines.append(f'  {b_id}{{"{b_id}: {clean_label}"}}')
+            elif b.block_type in ("TERMINAL", "EXIT"):
+                lines.append(f'  {b_id}(["{b_id}: {clean_label}"])')
             else:
-                lines.append(f'  {b_id}["{b_id}: {label}"]')
+                lines.append(f'  {b_id}["{b_id}: {clean_label}"]')
 
         for edge in self.edges:
-            if edge.condition:
-                lines.append(f'  {edge.source} -->|"{edge.condition}"| {edge.target}')
+            cond = edge.condition
+            if cond:
+                safe_cond = cond.replace('"', '').replace("'", "").replace("<", "&lt;").replace(">", "&gt;")
+                lines.append(f'  {edge.source} -->|"{safe_cond}"| {edge.target}')
             else:
                 lines.append(f'  {edge.source} --> {edge.target}')
 

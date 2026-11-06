@@ -224,6 +224,66 @@ You must write an algorithm with **O(log N)** runtime complexity. Linear search 
     },
 
     # -------------------------------------------------------------------------
+    "sliding_window_max": {
+        "id": "sliding_window_max",
+        "title": "Sliding Window Maximum",
+        "track": "Track 1: Algorithmic Invariants",
+        "track_code": "ALG-104",
+        "difficulty": "Hard",
+        "summary": "Find the maximum element in sliding window of size k in strictly O(N) linear time using a monotonic deque.",
+        "description": r"""### Problem Statement
+You are given an array of integers `nums`, there is a sliding window of size `k` which is moving from the very left of the array to the very right. Return the max sliding window array.
+
+### Invariant
+A naive approach takes $O(N \cdot k)$ time. By maintaining a **monotonically decreasing deque of indices**, we achieve strictly $O(N)$ time and $O(k)$ space.""",
+        "constraints": [
+            "1 <= len(nums) <= 10^5",
+            "-10^4 <= nums[i] <= 10^4",
+            "1 <= k <= len(nums)",
+            "Target Time Complexity: O(N)",
+            "Target Space Complexity: O(k)"
+        ],
+        "starter_code": """from collections import deque
+
+def max_sliding_window(nums: list[int], k: int) -> list[int]:
+    q = deque()
+    res = []
+    
+    for i, n in enumerate(nums):
+        while q and q[0] <= i - k:
+            q.popleft()
+        while q and nums[q[-1]] < n:
+            q.pop()
+        q.append(i)
+        if i >= k - 1:
+            res.append(nums[q[0]])
+    return res
+""",
+        "test_cases": [
+            TestCase(description="Standard array k=3", call="max_sliding_window([1, 3, -1, -3, 5, 3, 6, 7], 3)", expected=[3, 3, 5, 5, 6, 7]),
+            TestCase(description="Single element array", call="max_sliding_window([1], 1)", expected=[1]),
+            TestCase(description="Window equals array size", call="max_sliding_window([9, 11], 2)", expected=[11]),
+            TestCase(description="Strictly decreasing elements", call="max_sliding_window([4, -2], 2)", expected=[4])
+        ],
+        "hints": {
+            1: {
+                "title": "Monotonic Deque Invariant",
+                "guidance": "If element A is older than element B, and A < B, can element A ever be the maximum in any future window?",
+                "question": "Why is it safe to pop smaller elements from the back of the deque?"
+            },
+            2: {
+                "title": "Index Eviction",
+                "guidance": "Store indices instead of values in the deque. The window boundary is i - k + 1.",
+                "question": "How do you check if the element at the front of the deque has expired?"
+            },
+            3: {
+                "title": "Scaffold",
+                "guidance": "Pop expired from left, pop smaller from right, append current index, append nums[q[0]] when i >= k - 1.",
+                "question": "What is the total number of deque operations across the entire array?"
+            }
+        }
+    },
+
     # TRACK 2: Core Data Structures & Invariants
     # -------------------------------------------------------------------------
     "valid_parentheses_stack": {
