@@ -4,14 +4,14 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2.8+-e92063.svg)](https://docs.pydantic.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-26%20passed-brightgreen.svg)]()
+[![Tests Passing](https://img.shields.io/badge/tests-33%20passed-brightgreen.svg)]()
 
 > **Authored by Faris Ruknuddin ([@ZephyrusZorro](https://github.com/ZephyrusZorro))**  
 > *A local-first engineering evaluation engine combining Abstract Syntax Tree (AST) static analysis, Halstead software metrics, subprocess execution, Leitner spaced repetition, and tiered Socratic mentoring in a focused engineering studio.*
 
 ## Obsidian studio
 
-A quiet, focused workspace for Python practice: graphite glass, clear hierarchy, and restrained transitions. Move between Studio, Flowchart, Insights, Recall, and Coach. Edited drafts survive challenge switching within the session, and successful runs preserve the solution you wrote.
+An expressive workspace for Python practice: ink-blue glass, violet accents, safe syntax coloring, challenge search, and restrained transitions. Move between Studio, Flowchart, Insights, Recall, and Coach. Drafts survive switching and reloads in this browser, and successful runs preserve your solution. Results are marked outdated when the source changes. If browser storage is blocked, drafts remain available in the current tab.
 
 ![Tark Obsidian studio](docs/screenshots/desktop.png)
 
@@ -127,7 +127,7 @@ Open **`http://localhost:8000`** in your browser to access the TarkAI studio.
 
 ## 🧪 Test Suite Verification
 
-TarkAI includes 26 automated unit and integration tests:
+TarkAI includes 33 automated unit and integration tests:
 
 ```bash
 python -m pytest tests -v
@@ -153,7 +153,7 @@ tests/test_sandbox.py::test_sandbox_failing_assertion PASSED
 tests/test_sandbox.py::test_sandbox_runtime_exception PASSED
 tests/test_sandbox.py::test_sandbox_infinite_loop_timeout PASSED
 
-======================= 26 passed (timing varies) =======================
+======================= 33 passed (timing varies) =======================
 ```
 
 ---
@@ -170,8 +170,11 @@ Install optional browser-test dependencies with `python -m pip install -r requir
 python -m pytest -q
 python tests/browser_regressions.py http://127.0.0.1:8000
 python tests/browser_smoke.py http://127.0.0.1:8000
+python tests/browser_product.py http://127.0.0.1:8000
 ```
 
 Browser tests record synthetic submissions and recall progress in the local database. Use a disposable checkout when a clean practice history matters. Subprocess execution is a local educational tool, not a security boundary for hostile code.
 
 See [redesign verification](docs/interface-verification.md) for checked flows and boundaries.
+
+Drafts are stored in this browser; clearing site data removes them. Different challenges in separate tabs keep their own saved drafts. Simultaneous edits to the same challenge use the latest saved version. Practice streaks use UTC calendar days and include submitted attempts.

@@ -27,8 +27,8 @@
     <div class="studio-status"><span class="status-dot"></span>Local workspace<span class="clock-ticker" id="utc-clock">00:00:00 UTC</span></div>
   </header>
   <section class="studio-intro" aria-labelledby="studio-title">
-    <div><div class="studio-eyebrow"><span class="intro-line"></span>THINK DEEPER. BUILD BETTER.</div><h1 id="studio-title">Engineering studio<span>.</span></h1><p id="studio-description">A little more understanding. A lot more possibility.</p></div>
-    <div class="session-stats"><div><span class="stat-val" id="stat-solved">0/10</span><span class="stat-lbl">CHALLENGES SOLVED</span></div><div><span class="stat-val" id="stat-streak">0d</span><span class="stat-lbl">ACTIVE STREAK</span></div><div><span class="stat-val" id="stat-loc">0</span><span class="stat-lbl">LINES EXPLORED</span></div></div>
+    <div><div class="studio-eyebrow"><span class="intro-line"></span>YOUR IDEAS, IN MOTION</div><h1 id="studio-title">Engineering studio<span>.</span></h1><p id="studio-description">Write with focus. Follow the logic. Find your next insight.</p></div>
+    <div class="session-stats"><div><span class="stat-val" id="stat-solved">0/10</span><span class="stat-lbl">CHALLENGES SOLVED</span></div><div><span class="stat-val" id="stat-streak">0d</span><span class="stat-lbl" title="Consecutive practice days based on UTC dates">PRACTICE STREAK · UTC</span></div><div><span class="stat-val" id="stat-loc">0</span><span class="stat-lbl">LINES EXPLORED</span></div></div>
   </section>
 
   <!-- Secondary Actions & Status Bar -->
@@ -87,7 +87,10 @@
           </div>
 
           <div class="window-body scrollable">
-            <div class="track-section-label">YOUR PRACTICE, YOUR PACE</div>
+            <div class="track-section-label">CHOOSE YOUR NEXT CHALLENGE</div>
+            <label class="challenge-search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input type="search" id="challenge-search" aria-label="Search challenges" placeholder="Find a challenge…" autocomplete="off"><kbd>⌃ K</kbd></label>
+            <div class="library-meta"><span>LIBRARY</span><span id="challenge-search-count">10 challenges</span></div>
+            <p id="challenge-search-empty" hidden>No matching challenges. Try a title or a track.</p>
             <div class="curriculum-list" id="challenge-list">
               <!-- Dynamically populated from /api/curriculum -->
             </div>
@@ -127,6 +130,7 @@
             <textarea id="code-editor" aria-label="Python code editor" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="# Write your production Python implementation here..."></textarea>
           </div>
 
+          <div class="editor-footnote"><span><span class="editor-language-dot"></span> Python</span><span id="draft-status" role="status" aria-live="off">Local draft</span></div>
           <!-- Bottom Console Bar -->
           <div class="console-bar">
             <div class="console-left">
@@ -160,8 +164,9 @@
             <!-- Subtab 1: Test Results -->
             <div class="subtab-pane active" id="tab-tests">
               <div class="test-summary pass" id="test-summary-box" style="display: none;">
-                <span id="test-summary-text">✓ 5 / 5 Tests Passed (100%)</span>
-                <span id="test-summary-time">0.82ms</span>
+                <span id="test-summary-text">Ready to run</span>
+                <span id="test-freshness" class="result-freshness" hidden>Code changed · run again</span>
+                <span id="test-summary-time">—</span>
               </div>
               <div id="test-cards-container">
                 <div class="empty-state">
@@ -195,7 +200,8 @@
               </div>
 
               <div id="fuzz-summary-box" class="test-summary pass" style="display:none;">
-                <span id="fuzz-summary-text">5 / 5 Invariants Held</span>
+                <span id="fuzz-summary-text">Ready to check</span>
+                <span id="fuzz-freshness" class="result-freshness" hidden>Code changed · run again</span>
                 <span id="fuzz-summary-meta">Stress Passed</span>
               </div>
 
@@ -559,6 +565,7 @@
 
   </main>
 
+  <script src="/js/editor.js"></script>
   <script src="/js/app.js"></script>
   <script src="/js/workspace.js"></script>
 </body>

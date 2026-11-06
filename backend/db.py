@@ -64,6 +64,15 @@ def init_db():
                 last_reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Repair aggregates written by older versions; submissions are the source
+        # of truth. Leave records without submission history untouched.
+        conn.execute("""
+            UPDATE solved_challenges SET
+                attempts = (SELECT COUNT(*) FROM submissions s WHERE s.challenge_id = solved_challenges.challenge_id),
+                best_time_ms = (SELECT MIN(execution_time_ms) FROM submissions s WHERE s.challenge_id = solved_challenges.challenge_id AND s.passed = 1),
+                solved_at = (SELECT MIN(created_at) FROM submissions s WHERE s.challenge_id = solved_challenges.challenge_id AND s.passed = 1)
+            WHERE EXISTS (SELECT 1 FROM submissions s WHERE s.challenge_id = solved_challenges.challenge_id)
+        """)
         conn.commit()
 
 
@@ -171,7 +180,10 @@ def record_submission(
                 INSERT INTO solved_challenges (challenge_id, solved_at, attempts, best_time_ms)
                 VALUES (?, CURRENT_TIMESTAMP, 1, ?)
                 ON CONFLICT(challenge_id) DO UPDATE SET
-                    best_time_ms = MIN(best_time_ms, excluded.best_time_ms)
+                    best_time_ms = CASE WHEN best_time_ms IS NULL THEN excluded.best_time_ms
+                                        ELSE MIN(best_time_ms, excluded.best_time_ms) END,
+                    solved_at = CASE WHEN best_time_ms IS NULL THEN excluded.solved_at ELSE solved_at END,
+                    attempts = attempts + 1
             """, (challenge_id, execution_time_ms))
         else:
             conn.execute("""
@@ -200,7 +212,18 @@ def get_stats() -> UserStats:
         solved_sub = conn.execute("SELECT COUNT(*) as cnt FROM solved_challenges WHERE best_time_ms IS NOT NULL").fetchone()["cnt"]
 
         rows = conn.execute("SELECT complexity, COUNT(*) as cnt FROM submissions GROUP BY complexity ORDER BY cnt DESC").fetchall()
-        top_complexity = rows[0]["complexity"] if rows else "O(1)"
+        top_complexity = (rows[0]["complexity"] or "O(1)") if rows else "O(1)"
+
+        practice_days = {datetime.fromisoformat(row["day"]).date() for row in conn.execute(
+            "SELECT DISTINCT date(created_at) AS day FROM submissions WHERE date(created_at) IS NOT NULL"
+        )}
+        day = datetime.now(timezone.utc).date()
+        if day not in practice_days:
+            day -= timedelta(days=1)
+        streak = 0
+        while day in practice_days:
+            streak += 1
+            day -= timedelta(days=1)
 
         # Calculate estimated lines of code submitted
         sub_codes = conn.execute("SELECT code FROM submissions").fetchall()
@@ -231,7 +254,7 @@ def get_stats() -> UserStats:
         total_attempts=total_sub,
         problems_solved=solved_sub,
         mastery_percentage=mastery_pct,
-        streak_days=1 if solved_sub > 0 else 0,
+        streak_days=streak,
         average_complexity=top_complexity,
         total_loc_analyzed=total_lines,
         leitner_breakdown=leitner_breakdown,

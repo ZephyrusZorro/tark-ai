@@ -19,12 +19,14 @@ document.addEventListener("DOMContentLoaded", () => {
   let lastFailedTest = null;
   let chatHistory = [];
   let currentAstData = null;
-  const drafts = new Map();
+  const drafts = window.TarkDrafts;
   let challengeLoaded = false;
   let editorChallengeId = null;
   let challengeLoading = false;
   let runPending = false;
   let fuzzPending = false;
+  let lastRunCode = null;
+  let lastFuzzCode = null;
   let selectionVersion = 0;
   let analysisVersion = 0;
   let graphVersion = 0;
@@ -242,10 +244,19 @@ document.addEventListener("DOMContentLoaded", () => {
   // --------------------------------------------------------------------------
   // Editor Controller
   // --------------------------------------------------------------------------
+  function updateResultFreshness() {
+    const test = document.getElementById("test-freshness");
+    const fuzz = document.getElementById("fuzz-freshness");
+    if (test) test.hidden = lastRunCode === null || lastRunCode === codeEditor.value;
+    if (fuzz) fuzz.hidden = lastFuzzCode === null || lastFuzzCode === codeEditor.value;
+  }
   function updateLineNumbers() {
     if (!codeEditor || !lineNumbers) return;
     const lines = codeEditor.value.split("\n").length;
     lineNumbers.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join("<br>");
+    window.TarkEditor.render(codeEditor);
+    updateResultFreshness();
+    if (editorChallengeId && !challengeLoading) drafts.set(editorChallengeId, codeEditor.value);
   }
 
   if (codeEditor) {
@@ -309,6 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
+      window.filterChallenges?.();
       if (challenges.length > 0 && !challengeLoaded) {
         await selectChallenge(currentChallengeId || challenges[0].id);
       }
@@ -345,6 +357,8 @@ document.addEventListener("DOMContentLoaded", () => {
       challengeLoading = false;
       chatHistory = [];
       currentAstData = null;
+      lastRunCode = null;
+      lastFuzzCode = null;
       if (terminalChatLog) terminalChatLog.textContent = "Ask about this challenge, your approach, or a failing test.";
       if (dockSocGuidance) dockSocGuidance.textContent = "Request a hint to explore this challenge.";
       if (dockSocTitle) dockSocTitle.textContent = "A little guidance, when you need it.";
@@ -609,6 +623,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const data = await res.json();
       if (requestChallenge !== currentChallengeId || requestCode !== codeEditor.value) return;
+      lastRunCode = requestCode;
+      updateResultFreshness();
 
       if (consolePerf) consolePerf.textContent = `${data.execution_time_ms}ms · ${data.memory_kb}KB`;
 
@@ -770,6 +786,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const data = await res.json();
       if (requestChallenge !== currentChallengeId || requestCode !== codeEditor.value) return;
+      lastFuzzCode = requestCode;
+      updateResultFreshness();
 
       if (fuzzSummaryBox) fuzzSummaryBox.style.display = "flex";
       if (data.all_invariants_held) {

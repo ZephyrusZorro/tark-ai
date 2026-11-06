@@ -1,20 +1,24 @@
-# Obsidian interface verification — 2026-11-07
+# Tark interface verification — 2026-11-07
 
-## Delivered
-- Obsidian glass design layer, responsive studio panels, readable navigation, local typography, visible focus, and reduced-motion transitions.
-- Successful runs preserve edited solutions; drafts survive challenge switching within the current session.
-- Rapid and failed challenge selection retain the loaded editor's identity and disable actions while loading.
-- Text escaping covers test results, fuzz output, source snippets, errors, and coach messages; Mermaid uses strict mode.
-- Subprocess test fixtures decode JSON correctly, including booleans, nulls, nested objects, and escaped strings.
-- Duplicate run shortcuts and fuzz actions are guarded while a request is pending.
+## Current interface
+Ink-blue glass with violet/blue accents, stronger panel hierarchy, safe Python syntax coloring, searchable challenges, larger source text, and visible draft status. Mobile layouts, keyboard navigation and reduced motion remain in place.
 
-## Evidence
-- `python -m pytest -q`: 26 passed.
-- `python tests/browser_regressions.py URL`: 7 regression cases passed, covering successful-run preservation, drafts, test/fuzz HTML injection, rapid selection, failed selection, and repeated shortcuts.
-- `python tests/browser_smoke.py URL`: numeric and boolean challenge runs; property fuzzing; CFG and AST rendering; complexity; recall cards; coach conversation; syntax feedback and starter reset.
-- All 5 workspaces checked at widths 1440, 768, and 390 pixels: no page overflow, no uncaught JavaScript errors in the feature walkthrough.
-- JavaScript syntax and Git whitespace checks passed. Desktop and mobile screenshots reviewed.
-- Independent review reproduced fuzz HTML execution and delayed-selection draft corruption; focused regressions passed after correction.
+## Correctness improvements
+- Drafts persist across reloads, including empty drafts. Blocked storage falls back to the current tab.
+- Different challenges in separate tabs preserve their saved drafts.
+- Source changes mark old test/fuzz results outdated until those checks run again.
+- Success after failure correctly marks a challenge solved. Attempts count, best successful times are retained, and old incorrect aggregates are repaired from submission history on startup.
+- Streaks reflect consecutive UTC practice dates instead of a fixed one-day value.
+- Previous selection, HTML-rendering, JSON-fixture and duplicate-shortcut fixes remain covered.
+
+## Verification
+- Backend suite: 33 tests.
+- Browser regressions: 7 original plus 6 product cases.
+- Walkthrough: numeric/boolean runs, fuzzing, CFG/AST, complexity, recall, coaching, syntax feedback and reset.
+- All 5 workspaces at 1440, 1024, 768 and 390 pixels: no page overflow.
+- JavaScript syntax checks and desktop/mobile screenshots reviewed.
+- Independent review checked long-line/multiline editor scroll and found a cross-tab overwrite; a failing regression passed after correction.
+- Browser review uses a disposable database.
 
 ## Boundaries
-Drafts are held within the current browser session, not across reloads. Local deterministic tutor behavior was checked; optional Ollama provider behavior was not. The subprocess runner is not an OS security boundary for hostile code. Existing FastAPI lifecycle and Starlette/httpx test-client deprecation warnings remain. Browser checks create synthetic local practice history. No database is committed.
+Drafts are local browser data, not collaborative editing or synchronization. Clearing site data removes them. Simultaneous edits to the same challenge use the latest saved version. Syntax coloring is presentation, not a full language server. Optional Ollama behavior was not tested. Existing FastAPI/Starlette warnings remain. No database is committed.
