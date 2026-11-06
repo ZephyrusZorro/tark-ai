@@ -1,11 +1,18 @@
 """
 TarkAI — FastAPI Application Server
-Provides RESTful APIs for AST analysis, sandboxed execution,
-curriculum retrieval, Socratic mentoring, Leitner spaced repetition,
-and serves the static frontend developer studio.
+Provides RESTful APIs for AST analysis, Control Flow Graphs (CFG),
+sandboxed execution with Tarantula fault localization, dynamic property fuzzing,
+curriculum retrieval, Socratic mentoring, and FSRS spaced repetition.
 """
 
+import sys
 from pathlib import Path
+
+# Ensure backend directory is in sys.path regardless of how main.py is invoked
+BACKEND_DIR = Path(__file__).resolve().parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -16,10 +23,15 @@ from models import (
     ExecutionResult,
     SocraticHintRequest,
     SocraticHintResponse,
-    UserStats
+    UserStats,
+    CFGAnalysisResult,
+    FuzzSessionReport
 )
 from ast_analyzer import analyze_code_ast
 from sandbox import execute_sandboxed
+from cfg_engine import generate_control_flow_graph
+from fault_localizer import compute_sbfl_scores
+from fuzzer import run_property_fuzzing
 from curriculum import get_all_challenges, get_challenge_by_id
 from socratic_tutor import generate_socratic_guidance
 from db import (
@@ -32,8 +44,8 @@ from db import (
 
 app = FastAPI(
     title="TarkAI (तर्क) — Local-First Code Auditor & AST Tutor",
-    version="1.0.0",
-    description="Intelligent code inspection, complexity analysis, and Socratic guidance."
+    version="2.0.0",
+    description="State-of-the-art AST inspection, CFG basic blocks, SBFL fault localization, and Socratic mentoring."
 )
 
 app.add_middleware(
@@ -44,7 +56,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 
 @app.on_event("startup")
@@ -57,8 +69,8 @@ def health_check():
     return {
         "status": "online",
         "system": "TarkAI (तर्क)",
-        "version": "1.0.0",
-        "engine": "Python AST + Subprocess Sandbox"
+        "version": "2.0.0-PROD",
+        "engine": "Python AST + CFG Basic Blocks + SBFL Fault Localizer + Subprocess Sandbox + Property Fuzzer"
     }
 
 
@@ -77,7 +89,6 @@ def get_challenge(challenge_id: str):
     if not chal:
         raise HTTPException(status_code=404, detail="Challenge not found.")
     
-    # Return challenge without exposing solution
     return {
         "id": chal["id"],
         "title": chal["title"],
@@ -97,6 +108,11 @@ def get_challenge(challenge_id: str):
 @app.post("/api/analyze", response_model=ASTAnalysisResult)
 def analyze_code(submission: CodeSubmission):
     return analyze_code_ast(submission.code)
+
+
+@app.post("/api/cfg", response_model=CFGAnalysisResult)
+def analyze_cfg(submission: CodeSubmission):
+    return generate_control_flow_graph(submission.code)
 
 
 @app.post("/api/run", response_model=ExecutionResult)
@@ -122,10 +138,14 @@ def run_code(submission: CodeSubmission):
             test_results=[]
         )
 
-    # 2. Execute against test cases
+    # 2. Execute against test cases with isolated subprocess
     exec_res = execute_sandboxed(submission.code, chal["test_cases"])
 
-    # 3. Record in DB and update Leitner spaced repetition interval
+    # 3. Compute Spectrum-Based Fault Localization (Tarantula / Ochiai)
+    sbfl_report = compute_sbfl_scores(submission.code, exec_res.test_results)
+    exec_res.fault_localization = sbfl_report
+
+    # 4. Record in DB and update Leitner / FSRS spaced repetition interval
     complexity_str = ast_res.complexity.estimated_time if ast_res.complexity else "O(N)"
     leitner_info = record_submission(
         challenge_id=submission.challenge_id,
@@ -139,6 +159,13 @@ def run_code(submission: CodeSubmission):
 
     exec_res.spaced_repetition_update = leitner_info
     return exec_res
+
+
+@app.post("/api/fuzz", response_model=FuzzSessionReport)
+def fuzz_test_code(submission: CodeSubmission):
+    if not submission.challenge_id:
+        raise HTTPException(status_code=400, detail="Challenge ID required for property fuzzing.")
+    return run_property_fuzzing(submission.code, submission.challenge_id)
 
 
 @app.post("/api/socratic-hint", response_model=SocraticHintResponse)

@@ -39,6 +39,19 @@ def test_api_analyze_code():
     assert data["complexity"]["estimated_time"] == "O(N^2)"
     assert data["complexity"]["halstead"] is not None
     assert data["mermaid_flowchart"] is not None
+    assert data["cfg_analysis"] is not None
+    assert data["cfg_analysis"]["total_blocks"] >= 2
+
+
+def test_api_cfg_analysis():
+    res = client.post("/api/cfg", json={
+        "code": "def branch(x):\n    if x > 0:\n        return 1\n    else:\n        return -1"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_blocks"] >= 3
+    assert data["cyclomatic_complexity"] >= 2
+    assert "flowchart TD" in data["mermaid_cfg"]
 
 
 def test_api_run_challenge_pass():
@@ -66,7 +79,61 @@ def two_sum_sorted(numbers: list[int], target: int) -> list[int]:
     assert data["passed_count"] == data["total_count"]
     assert len(data["test_results"]) >= 4
     assert data["spaced_repetition_update"] is not None
-    assert data["spaced_repetition_update"]["box"] >= 1
+    assert data["fault_localization"] is not None
+    assert data["fault_localization"]["has_failures"] is False
+
+
+def test_api_run_fault_localization_on_failure():
+    failing_code = """
+def two_sum_sorted(numbers: list[int], target: int) -> list[int]:
+    # Buggy: returns 0-indexed instead of 1-indexed
+    left = 0
+    right = len(numbers) - 1
+    while left < right:
+        s = numbers[left] + numbers[right]
+        if s == target:
+            return [left, right]
+        elif s < target:
+            left += 1
+        else:
+            right -= 1
+    return []
+"""
+    res = client.post("/api/run", json={
+        "challenge_id": "two_sum_sorted",
+        "code": failing_code
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["overall_passed"] is False
+    assert data["fault_localization"] is not None
+    assert data["fault_localization"]["has_failures"] is True
+    assert data["fault_localization"]["most_suspicious_line"] is not None
+
+
+def test_api_fuzz_testing():
+    solution_code = """
+def two_sum_sorted(numbers: list[int], target: int) -> list[int]:
+    left = 0
+    right = len(numbers) - 1
+    while left < right:
+        s = numbers[left] + numbers[right]
+        if s == target:
+            return [left + 1, right + 1]
+        elif s < target:
+            left += 1
+        else:
+            right -= 1
+    return []
+"""
+    res = client.post("/api/fuzz", json={
+        "challenge_id": "two_sum_sorted",
+        "code": solution_code
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_fuzz_tests"] >= 4
+    assert data["all_invariants_held"] is True
 
 
 def test_api_socratic_hint():
