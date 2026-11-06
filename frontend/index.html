@@ -3,56 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TarkAI (तर्क) — Local-First Intelligent Code Auditor & AST Socratic Tutor</title>
-  <meta name="description" content="Production AST semantic auditor, complexity inspector, and Socratic code mentor by Faris Ruknuddin.">
+  <title>Tark — Engineering studio</title>
+  <meta name="theme-color" content="#101215">
+  <meta name="description" content="A focused local workspace to write Python, inspect its structure, and build lasting understanding.">
   <link rel="stylesheet" href="/css/tark.css">
+  <link rel="stylesheet" href="/css/obsidian.css">
   <script src="/js/mermaid.min.js"></script>
 </head>
-<body class="scanlines-active">
-  <!-- Scanlines CRT Overlay -->
-  <div class="scanlines-overlay" id="scanlines-layer"></div>
+<body>
+  <a class="skip-link" href="#main-content">Skip to editor</a>
+
 
   <!-- Top Window-Manager Status Bar (.dbar) -->
   <header class="dbar">
-    <div class="dbar-left">
-      <span class="term-prompt">faris@tark:~$</span>
-      <div class="brand">
-        <span class="hindi">तर्क</span>
-        <span class="brand-text">TARK.AI</span>
-      </div>
-      <span class="badge-tag">v1.2.0-PROD</span>
-    </div>
-
-    <div class="dbar-center">
-      <nav class="wm-workspaces">
-        <button type="button" class="ws-btn active" data-workspace="ws-code">
-          <span class="ws-key">1</span> CODE_STUDIO
-        </button>
-        <button type="button" class="ws-btn" data-workspace="ws-ast">
-          <span class="ws-key">2</span> AST_FLOWCHART
-        </button>
-        <button type="button" class="ws-btn" data-workspace="ws-complexity">
-          <span class="ws-key">3</span> HALSTEAD_COMPLEXITY
-        </button>
-        <button type="button" class="ws-btn" data-workspace="ws-leitner">
-          <span class="ws-key">4</span> LEITNER_DRILL
-          <span class="due-badge" id="leitner-due-count" style="display:none;">0</span>
-        </button>
-        <button type="button" class="ws-btn" data-workspace="ws-socrates">
-          <span class="ws-key">5</span> SOCRATIC_COACH
-        </button>
-      </nav>
-    </div>
-
-    <div class="dbar-right">
-      <div class="status-pill">
-        <span class="status-dot"></span>
-        <span>SANDBOX: SUBPROCESS_ISOLATED</span>
-      </div>
-      <div class="clock-ticker" id="utc-clock">00:00:00 UTC</div>
-      <button type="button" class="scanline-toggle" id="btn-scanlines" title="Toggle CRT Scanline Effect">CRT: ON</button>
-    </div>
+    <a href="/" class="studio-brand" aria-label="Tark home"><span class="studio-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="m13 7-8 9 8 9M19 7l8 9-8 9M18 5l-4 22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="brand-text">tark<span class="brand-dot">.</span></span><span class="brand-hindi">तर्क</span></a>
+    <nav class="wm-workspaces" aria-label="Studio workspaces">
+      <button type="button" class="ws-btn active" data-workspace="ws-code" aria-pressed="true"><span class="ws-key">01</span>Studio</button>
+      <button type="button" class="ws-btn" data-workspace="ws-ast" aria-pressed="false"><span class="ws-key">02</span>Flowchart</button>
+      <button type="button" class="ws-btn" data-workspace="ws-complexity" aria-pressed="false"><span class="ws-key">03</span>Insights</button>
+      <button type="button" class="ws-btn" data-workspace="ws-leitner" aria-pressed="false"><span class="ws-key">04</span>Recall <span class="nav-count" id="leitner-due-count">0</span></button>
+      <button type="button" class="ws-btn" data-workspace="ws-socrates" aria-pressed="false"><span class="ws-key">05</span>Coach</button>
+    </nav>
+    <div class="studio-status"><span class="status-dot"></span>Local workspace<span class="clock-ticker" id="utc-clock">00:00:00 UTC</span></div>
   </header>
+  <section class="studio-intro" aria-labelledby="studio-title">
+    <div><div class="studio-eyebrow"><span class="intro-line"></span>THINK DEEPER. BUILD BETTER.</div><h1 id="studio-title">Engineering studio<span>.</span></h1><p id="studio-description">A little more understanding. A lot more possibility.</p></div>
+    <div class="session-stats"><div><span class="stat-val" id="stat-solved">0/10</span><span class="stat-lbl">CHALLENGES SOLVED</span></div><div><span class="stat-val" id="stat-streak">0d</span><span class="stat-lbl">ACTIVE STREAK</span></div><div><span class="stat-val" id="stat-loc">0</span><span class="stat-lbl">LINES EXPLORED</span></div></div>
+  </section>
 
   <!-- Secondary Actions & Status Bar -->
   <div class="sub-bar">
@@ -62,45 +39,41 @@
       <span class="badge badge-easy" id="top-chal-diff">EASY</span>
     </div>
 
-    <div class="quick-stats-row">
-      <div class="stat-item"><span class="stat-lbl">SOLVED:</span> <span class="stat-val" id="stat-solved">0/10</span></div>
-      <div class="stat-item"><span class="stat-lbl">STREAK:</span> <span class="stat-val" id="stat-streak">0d</span></div>
-      <div class="stat-item"><span class="stat-lbl">LOC ANALYZED:</span> <span class="stat-val" id="stat-loc">0</span></div>
-    </div>
+
 
     <div class="top-action-btns">
       <button type="button" class="btn btn-secondary" id="btn-reset" title="Reset editor to problem starter template">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>
-        Reset Starter
+        Reset
       </button>
       <button type="button" class="btn btn-secondary" id="btn-analyze" title="Ctrl+Shift+A">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg>
-        Inspect AST
+        Analyze
       </button>
       <button type="button" class="btn btn-amber" id="btn-hint">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
-        Socratic Hint
+        Get a hint
       </button>
       <button type="button" class="btn btn-secondary" id="btn-fuzz" title="Run property-based fuzz stress testing">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
-        Property Fuzz
+        Fuzz
       </button>
       <button type="button" class="btn btn-primary" id="btn-run" title="Ctrl+Enter">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        Run Tests (Ctrl+Enter)
+        Run tests
       </button>
     </div>
   </div>
 
   <!-- WORKSPACE CONTAINER -->
-  <main class="workspace-viewport">
+  <main class="workspace-viewport" id="main-content">
 
     <!-- ====================================================================
          WORKSPACE 1: CODE STUDIO (3-Column Layout)
          ==================================================================== -->
     <div class="workspace-pane active" id="ws-code">
       <div class="studio-layout">
-        
+
         <!-- Left Window: Curriculum & Problem Specs -->
         <div class="wm-window spec-window">
           <div class="window-titlebar">
@@ -109,12 +82,12 @@
               <span class="w-dot dot-yellow"></span>
               <span class="w-dot dot-green"></span>
             </div>
-            <div class="w-title">01_CURRICULUM_SPEC.MD</div>
+            <div class="w-title">Challenge library</div>
             <span class="w-meta" id="curriculum-count">0 / 10 Solved</span>
           </div>
 
           <div class="window-body scrollable">
-            <div class="track-section-label">SELECT CURRICULUM CHALLENGE</div>
+            <div class="track-section-label">YOUR PRACTICE, YOUR PACE</div>
             <div class="curriculum-list" id="challenge-list">
               <!-- Dynamically populated from /api/curriculum -->
             </div>
@@ -122,12 +95,12 @@
             <div class="section-divider"></div>
 
             <div id="problem-spec" class="problem-markdown">
-              <h3 id="prob-title">Loading Challenge...</h3>
+              <h3 id="prob-title">Loading your challenge…</h3>
               <p id="prob-summary"></p>
               <div id="prob-description"></div>
-              
+
               <h4 style="margin-top: 14px; color: var(--amber); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;">
-                Operational Constraints
+                Constraints
               </h4>
               <ul class="constraints-list" id="prob-constraints"></ul>
             </div>
@@ -142,23 +115,23 @@
               <span class="w-dot dot-yellow"></span>
               <span class="w-dot dot-green"></span>
             </div>
-            <div class="w-title" id="editor-filename">02_SOLUTION.PY</div>
+            <div class="w-title" id="editor-filename">solution.py</div>
             <div class="editor-titlebar-right">
-              <span class="lang-tag">PYTHON 3.12</span>
-              <span class="hotkey-pill">RUN: ⌘+ENTER</span>
+              <span class="lang-tag">Python</span>
+              <span class="hotkey-pill">Ctrl + Enter</span>
             </div>
           </div>
 
           <div class="editor-container">
             <div class="line-numbers" id="line-numbers">1<br>2<br>3<br>4<br>5</div>
-            <textarea id="code-editor" spellcheck="false" placeholder="# Write your production Python implementation here..."></textarea>
+            <textarea id="code-editor" aria-label="Python code editor" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="# Write your production Python implementation here..."></textarea>
           </div>
 
           <!-- Bottom Console Bar -->
           <div class="console-bar">
             <div class="console-left">
               <span class="term-arrow">&gt;&gt;&gt;</span>
-              <span id="console-status">System ready. Press Ctrl+Enter to run sandboxed verification.</span>
+              <span id="console-status" role="status" aria-live="polite">Ready when you are. Ctrl + Enter to run your tests.</span>
             </div>
             <div class="console-right">
               <span class="telemetry-badge" id="console-perf">0.00ms · 0KB</span>
@@ -175,11 +148,11 @@
               <span class="w-dot dot-green"></span>
             </div>
             <div class="panel-tabs">
-              <button type="button" class="panel-tab-btn active" data-tab="tab-tests">TESTS</button>
-              <button type="button" class="panel-tab-btn" data-tab="tab-fault-loc">FAULT LOC (SBFL)</button>
-              <button type="button" class="panel-tab-btn" data-tab="tab-fuzz">PROPERTY FUZZ</button>
-              <button type="button" class="panel-tab-btn" data-tab="tab-ast-summary">AST SUMMARY</button>
-              <button type="button" class="panel-tab-btn" data-tab="tab-socratic-dock">SOCRATES</button>
+              <button type="button" class="panel-tab-btn active" data-tab="tab-tests">Tests</button>
+              <button type="button" class="panel-tab-btn" data-tab="tab-fault-loc">Faults</button>
+              <button type="button" class="panel-tab-btn" data-tab="tab-fuzz">Fuzz</button>
+              <button type="button" class="panel-tab-btn" data-tab="tab-ast-summary">Structure</button>
+              <button type="button" class="panel-tab-btn" data-tab="tab-socratic-dock">Coach</button>
             </div>
           </div>
 
@@ -229,7 +202,7 @@
               <div id="fuzz-cards-container">
                 <div class="empty-state">
                   <div class="empty-icon">⚡</div>
-                  <p>Click "Run Property Fuzz" to stress-test your code against dynamic edge cases and boundary limits.</p>
+                  <p>Click "Run Fuzz" to stress-test your code against dynamic edge cases and boundary limits.</p>
                 </div>
               </div>
             </div>
@@ -275,9 +248,9 @@
               </div>
 
               <div class="dock-chat-box">
-                <div class="dock-chat-title">ASK SOCRATES</div>
+                <div class="dock-chat-title">ASK Coach</div>
                 <form id="dock-chat-form" class="dock-form">
-                  <input type="text" id="dock-chat-input" placeholder="e.g. Why did test case 2 fail?">
+                  <input type="text" id="dock-chat-input" aria-label="Ask the coach" placeholder="e.g. Why did test case 2 fail?">
                   <button type="submit" class="btn btn-secondary">Ask</button>
                 </form>
               </div>
@@ -316,7 +289,7 @@
               <!-- Mermaid SVG rendered here -->
               <div class="empty-state">
                 <div class="empty-icon">◈</div>
-                <p>Click "Inspect AST" or "Re-Render Graph" to generate visual execution flowchart.</p>
+                <p>Click "Analyze" or "Re-Render Graph" to generate visual execution flowchart.</p>
               </div>
             </div>
           </div>
@@ -329,7 +302,7 @@
               <span class="w-dot dot-yellow"></span>
               <span class="w-dot dot-green"></span>
             </div>
-            <div class="w-title">02_AST_SYMBOL_TREE.JSON</div>
+            <div class="w-title">Ast symbol tree</div>
           </div>
           <div class="window-body scrollable">
             <pre class="tree-code-block full" id="full-ast-tree"></pre>
@@ -343,7 +316,7 @@
          ==================================================================== -->
     <div class="workspace-pane" id="ws-complexity">
       <div class="metrics-workspace">
-        
+
         <!-- Big-O & Complexity Card -->
         <div class="wm-window">
           <div class="window-titlebar">
@@ -555,14 +528,14 @@
               <span class="w-dot dot-yellow"></span>
               <span class="w-dot dot-green"></span>
             </div>
-            <div class="w-title">05_SOCRATIC_MENTOR_TERMINAL.TTY</div>
+            <div class="w-title">A space to think out loud</div>
             <div class="tier-pill" id="terminal-tier-pill">LEVEL 1: CONCEPTUAL</div>
           </div>
 
           <div class="window-body scrollable terminal-body" id="terminal-chat-log">
             <div class="terminal-msg system">
               <span class="t-prompt">[SYSTEM]</span>
-              <span>TarkAI Socratic Pedagogical Engine initialized. Strict anti-spoiler guards active. Ask about invariants, data structures, or failure modes.</span>
+              <span>Bring a question, an approach, or a failing test. We’ll work toward the insight together.</span>
             </div>
           </div>
 
@@ -576,9 +549,9 @@
 
           <!-- Terminal Input Row -->
           <form id="terminal-input-form" class="terminal-input-bar">
-            <span class="term-prompt">faris@student:~$</span>
-            <input type="text" id="terminal-input-field" placeholder="Ask a pedagogical question..." autocomplete="off">
-            <button type="submit" class="btn btn-primary btn-sm">SEND</button>
+            <span class="term-prompt">You</span>
+            <input type="text" id="terminal-input-field" aria-label="Question for the coach" placeholder="What would you like to understand?" autocomplete="off">
+            <button type="submit" class="btn btn-primary btn-sm">Send ↗</button>
           </form>
         </div>
       </div>
@@ -587,5 +560,6 @@
   </main>
 
   <script src="/js/app.js"></script>
+  <script src="/js/workspace.js"></script>
 </body>
 </html>

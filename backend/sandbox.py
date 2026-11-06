@@ -24,7 +24,7 @@ import tracemalloc
 {student_code}
 
 # Test Harness
-test_specs = {test_specs_json}
+test_specs = json.loads({test_specs_json})
 results = []
 
 tracemalloc.start()
@@ -108,7 +108,7 @@ def execute_sandboxed(
 
     harness_code = HARNESS_TEMPLATE.format(
         student_code=student_code,
-        test_specs_json=json.dumps(test_specs)
+        test_specs_json=repr(json.dumps(test_specs))
     )
 
     with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as f:

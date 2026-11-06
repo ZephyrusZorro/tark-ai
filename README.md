@@ -4,10 +4,16 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2.8+-e92063.svg)](https://docs.pydantic.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-18%20passed-brightgreen.svg)]()
+[![Tests Passing](https://img.shields.io/badge/tests-26%20passed-brightgreen.svg)]()
 
 > **Authored by Faris Ruknuddin ([@ZephyrusZorro](https://github.com/ZephyrusZorro))**  
-> *A local-first engineering evaluation engine combining Abstract Syntax Tree (AST) static analysis, Halstead software metrics, subprocess sandbox isolation, Leitner spaced repetition, and tiered Socratic mentoring in a retro tiling window-manager studio.*
+> *A local-first engineering evaluation engine combining Abstract Syntax Tree (AST) static analysis, Halstead software metrics, subprocess execution, Leitner spaced repetition, and tiered Socratic mentoring in a focused engineering studio.*
+
+## Obsidian studio
+
+A quiet, focused workspace for Python practice: graphite glass, clear hierarchy, and restrained transitions. Move between Studio, Flowchart, Insights, Recall, and Coach. Edited drafts survive challenge switching within the session, and successful runs preserve the solution you wrote.
+
+![Tark Obsidian studio](docs/screenshots/desktop.png)
 
 ---
 
@@ -31,7 +37,7 @@ Furthermore, naive online coding tutors execute untrusted student submissions wi
 
 ```mermaid
 flowchart TD
-    Client["Client Browser (Retro Window-Manager Studio)"] -->|POST /api/analyze| ASTEngine["AST Semantic Analyzer (ast.NodeVisitor)"]
+    Client["Client Browser (Obsidian Engineering Studio)"] -->|POST /api/analyze| ASTEngine["AST Semantic Analyzer (ast.NodeVisitor)"]
     Client -->|POST /api/run| Sandbox["Subprocess Isolated Sandbox"]
     Client -->|POST /api/socratic-hint| Socratic["Socratic Pedagogical Engine"]
     Client -->|GET /api/leitner| Leitner["Leitner Spaced Repetition Engine"]
@@ -69,11 +75,11 @@ TarkAI provides 5 dedicated workspaces accessible via the top status bar or hotk
 
 | Workspace | Key | Description |
 |---|---|---|
-| **`[1: CODE_STUDIO]`** | `Alt+1` | 3-pane IDE with Curriculum Specs, Monospace Code Editor with line numbers, and Sandboxed Test Runner Console. |
-| **`[2: AST_FLOWCHART]`** | `Alt+2` | Real-time interactive Mermaid flowchart diagram generated directly from the Python AST node visitor. |
-| **`[3: HALSTEAD_COMPLEXITY]`** | `Alt+3` | Full software engineering telemetry: Big-O bounds, Cognitive Complexity gauge, Cyclomatic Complexity, Halstead table ($V, D, E$), and Anti-pattern alerts. |
-| **`[4: LEITNER_DRILL]`** | `Alt+4` | 5-Box spaced repetition pipeline tracking retrieval strength, recall streaks, and "Due for Review Today" queue. |
-| **`[5: SOCRATIC_COACH]`** | `Alt+5` | Full-screen interactive terminal dialogue for targeted invariant mentoring with quick-prompt chips. |
+| **Studio** | `Alt+1` | Challenge library, code editor with line numbers, and test runner. |
+| **Flowchart** | `Alt+2` | Interactive Mermaid control-flow and AST diagrams. |
+| **Insights** | `Alt+3` | Complexity, Halstead metrics, and anti-pattern findings. |
+| **Recall** | `Alt+4` | Five-box spaced repetition pipeline and review queue. |
+| **Coach** | `Alt+5` | Socratic conversation and quick question prompts. |
 
 ---
 
@@ -88,7 +94,7 @@ TarkAI provides 5 dedicated workspaces accessible via the top status bar or hotk
   * **Level 3 (Scaffold):** Provides structural pseudocode blueprints while leaving implementation details to the student.
 * **🔁 Leitner Spaced Repetition:** Implements the classic 5-box memory engine where passing challenges advance ($1 \rightarrow 3 \rightarrow 7 \rightarrow 14 \rightarrow 30$ days) and failures reset to Box 1 for immediate reinforcement.
 * **📚 10 Curated Production Challenges:** 4 tracks spanning Two Pointers, Monotonic Stacks, Sliding Windows, Dynamic Programming, Streaming Generators, and Token Bucket Rate Limiters.
-* **🎨 Retro Window-Manager Aesthetic:** Styled after Rao Muhammad Hamza's terminal-driven portfolio aesthetic with Space Mono & Space Grotesk fonts, `.dbar` status ticker, window titlebars with control dots (`● ● ●`), and toggleable CRT scanlines.
+* **Obsidian workspace:** Graphite glass surfaces, muted blue accents, local typography, keyboard navigation, reduced-motion support, and layouts that adapt from desktop to mobile.
 
 ---
 
@@ -121,7 +127,7 @@ Open **`http://localhost:8000`** in your browser to access the TarkAI studio.
 
 ## 🧪 Test Suite Verification
 
-TarkAI includes 18 automated unit and integration tests:
+TarkAI includes 26 automated unit and integration tests:
 
 ```bash
 python -m pytest tests -v
@@ -147,7 +153,7 @@ tests/test_sandbox.py::test_sandbox_failing_assertion PASSED
 tests/test_sandbox.py::test_sandbox_runtime_exception PASSED
 tests/test_sandbox.py::test_sandbox_infinite_loop_timeout PASSED
 
-======================= 18 passed in 1.67s =======================
+======================= 26 passed (timing varies) =======================
 ```
 
 ---
@@ -155,3 +161,17 @@ tests/test_sandbox.py::test_sandbox_infinite_loop_timeout PASSED
 ## 📄 License
 
 MIT License. Designed and developed with pride by **Faris Ruknuddin**.
+
+## Browser verification
+
+Install optional browser-test dependencies with `python -m pip install -r requirements-dev.txt`. The scripts use an installed Microsoft Edge browser via Playwright. Start the server, then run:
+
+```powershell
+python -m pytest -q
+python tests/browser_regressions.py http://127.0.0.1:8000
+python tests/browser_smoke.py http://127.0.0.1:8000
+```
+
+Browser tests record synthetic submissions and recall progress in the local database. Use a disposable checkout when a clean practice history matters. Subprocess execution is a local educational tool, not a security boundary for hostile code.
+
+See [redesign verification](docs/interface-verification.md) for checked flows and boundaries.

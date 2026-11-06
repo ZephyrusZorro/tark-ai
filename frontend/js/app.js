@@ -1,6 +1,6 @@
 /**
  * TarkAI (तर्क) — Master Client-Side Application Studio Controller (v2.1)
- * Robust, fully tested, zero-bug event orchestration for:
+ * Client-side orchestration for:
  * - Control Flow Graph (CFG) basic block visualization
  * - Spectrum-Based Fault Localization (Tarantula & Ochiai)
  * - Dynamic Property-Based Fuzzing & Invariant Stress Testing
@@ -19,6 +19,27 @@ document.addEventListener("DOMContentLoaded", () => {
   let lastFailedTest = null;
   let chatHistory = [];
   let currentAstData = null;
+  const drafts = new Map();
+  let challengeLoaded = false;
+  let editorChallengeId = null;
+  let challengeLoading = false;
+  let runPending = false;
+  let fuzzPending = false;
+  let selectionVersion = 0;
+  let analysisVersion = 0;
+  let graphVersion = 0;
+  function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  async function apiFetch(url, options) {
+    const response = await window.fetch(url, options);
+    if (!response.ok) {
+      const message = `Request failed (${response.status}). Please try again.`;
+      if (consoleStatus) consoleStatus.textContent = message;
+      throw new Error(message);
+    }
+    return response;
+  }
   let currentFlowchartMode = "cfg"; // "cfg" or "ast"
 
   // Initialize Mermaid.js engine
@@ -27,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
       mermaid.initialize({
         startOnLoad: false,
         theme: "dark",
-        securityLevel: "loose",
+        securityLevel: "strict",
         themeVariables: {
           darkMode: true,
           background: "#08090f",
@@ -172,7 +193,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // --------------------------------------------------------------------------
   function switchWorkspace(targetId) {
     workspaceButtons.forEach(b => {
-      b.classList.toggle("active", b.getAttribute("data-workspace") === targetId);
+      const active = b.getAttribute("data-workspace") === targetId;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-pressed", String(active));
     });
     workspacePanes.forEach(p => {
       p.classList.toggle("active", p.id === targetId);
@@ -258,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // --------------------------------------------------------------------------
   async function loadCurriculum() {
     try {
-      const res = await fetch("/api/curriculum");
+      const res = await apiFetch("/api/curriculum");
       challenges = await res.json();
 
       const solvedCount = challenges.filter(c => c.solved).length;
@@ -267,7 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (challengeList) {
         challengeList.innerHTML = challenges.map(c => `
-          <div class="challenge-item ${c.id === currentChallengeId ? 'active' : ''}" data-id="${c.id}">
+          <button type="button" class="challenge-item ${c.id === currentChallengeId ? 'active' : ''}" data-id="${c.id}">
             <div>
               <div class="challenge-title">${c.solved ? '✓ ' : ''}${c.title}</div>
               <div style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
@@ -275,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
               </div>
             </div>
             <span class="badge badge-${c.difficulty.toLowerCase()}">${c.difficulty}</span>
-          </div>
+          </button>
         `).join("");
 
         document.querySelectorAll(".challenge-item").forEach(item => {
@@ -286,8 +309,8 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      if (challenges.length > 0) {
-        selectChallenge(currentChallengeId || challenges[0].id);
+      if (challenges.length > 0 && !challengeLoaded) {
+        await selectChallenge(currentChallengeId || challenges[0].id);
       }
 
       loadStats();
@@ -297,8 +320,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function selectChallenge(id) {
-    currentChallengeId = id;
+  async function selectChallenge(id, { reset = false } = {}) {
+    if (editorChallengeId && !reset) drafts.set(editorChallengeId, codeEditor.value);
+    if (reset) drafts.delete(id);
+    const version = ++selectionVersion;
+    challengeLoading = true;
+    codeEditor.disabled = true;
+    [btnRun, btnAnalyze, btnHint, btnFuzz, btnRunFuzzInner, btnReset].forEach(button => { if (button) button.disabled = true; });
+    if (consoleStatus) consoleStatus.textContent = "Loading challenge…";
     currentHintLevel = 1;
     lastFailedTest = null;
 
@@ -307,8 +336,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     try {
-      const res = await fetch(`/api/challenge/${id}`);
+      const res = await apiFetch(`/api/challenge/${id}`);
       const data = await res.json();
+      if (version !== selectionVersion) return;
+      currentChallengeId = id;
+      editorChallengeId = id;
+      challengeLoaded = true;
+      challengeLoading = false;
+      chatHistory = [];
+      currentAstData = null;
+      if (terminalChatLog) terminalChatLog.textContent = "Ask about this challenge, your approach, or a failing test.";
+      if (dockSocGuidance) dockSocGuidance.textContent = "Request a hint to explore this challenge.";
+      if (dockSocTitle) dockSocTitle.textContent = "A little guidance, when you need it.";
+      if (dockSocQuestion) dockSocQuestion.textContent = "";
+      if (sbflSummaryBox) sbflSummaryBox.style.display = "none";
+      if (sbflTableContainer) sbflTableContainer.replaceChildren();
+      if (fuzzSummaryBox) fuzzSummaryBox.style.display = "none";
+      if (fuzzCardsContainer) fuzzCardsContainer.replaceChildren();
 
       if (topChalTitle) topChalTitle.textContent = data.title;
       if (topTrackCode) topTrackCode.textContent = data.track_code || data.track.split(":")[0];
@@ -331,9 +375,9 @@ document.addEventListener("DOMContentLoaded", () => {
         probConstraints.innerHTML = data.constraints.map(c => `<li>${c}</li>`).join("");
       }
 
-      if (editorFilename) editorFilename.textContent = `02_${id.toUpperCase()}.PY`;
+      if (editorFilename) editorFilename.textContent = `${id}.py`;
       if (codeEditor) {
-        codeEditor.value = data.starter_code;
+        codeEditor.value = drafts.get(id) ?? data.starter_code;
         updateLineNumbers();
       }
 
@@ -351,6 +395,18 @@ document.addEventListener("DOMContentLoaded", () => {
       analyzeAST();
     } catch (err) {
       console.error("Failed to load challenge details:", err);
+      if (version === selectionVersion) {
+        document.querySelectorAll(".challenge-item").forEach(item => item.classList.toggle("active", item.dataset.id === currentChallengeId));
+        if (consoleStatus) consoleStatus.textContent = "Could not load that challenge. Your current draft is preserved.";
+      }
+    } finally {
+      if (version === selectionVersion) {
+        challengeLoading = false;
+        codeEditor.disabled = !editorChallengeId;
+        [btnRun, btnAnalyze, btnHint, btnFuzz, btnRunFuzzInner, btnReset].forEach(button => { if (button) button.disabled = !editorChallengeId; });
+        if (btnRun) btnRun.disabled ||= runPending;
+        [btnFuzz, btnRunFuzzInner].forEach(button => { if (button) button.disabled ||= fuzzPending; });
+      }
     }
   }
 
@@ -358,14 +414,19 @@ document.addEventListener("DOMContentLoaded", () => {
   // AST Semantic Analysis & CFG Visualization
   // --------------------------------------------------------------------------
   async function analyzeAST() {
+    if (challengeLoading || !editorChallengeId) return;
+    const version = ++analysisVersion;
+    const challenge = currentChallengeId;
+    const code = codeEditor.value;
     if (consoleStatus) consoleStatus.textContent = "Parsing AST, computing CFG & calculating Halstead bounds...";
     try {
-      const res = await fetch("/api/analyze", {
+      const res = await apiFetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: codeEditor.value, challenge_id: currentChallengeId })
       });
       const data = await res.json();
+      if (version !== analysisVersion || challenge !== currentChallengeId || code !== codeEditor.value) return;
       currentAstData = data;
 
       if (!data.syntax_valid) {
@@ -378,7 +439,7 @@ document.addEventListener("DOMContentLoaded", () => {
           quickAntiPatterns.innerHTML = `
             <div class="anti-pattern-alert" style="border-color: var(--rose);">
               <h4 style="color: var(--rose);">Syntax Error Detected</h4>
-              <p>${data.syntax_error} (line ${data.syntax_line})</p>
+              <p>${escapeHTML(data.syntax_error)} (line ${data.syntax_line})</p>
             </div>
           `;
         }
@@ -417,8 +478,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (data.anti_patterns && data.anti_patterns.length > 0) {
         const badgesHtml = data.anti_patterns.map(p => `
           <div class="anti-pattern-alert" style="cursor:pointer;" onclick="jumpToEditorLine(${p.line})">
-            <h4>[LINE ${p.line}] ${p.message}</h4>
-            <p><strong>Fix:</strong> ${p.suggestion}</p>
+            <h4>[LINE ${p.line}] ${escapeHTML(p.message)}</h4>
+            <p><strong>Fix:</strong> ${escapeHTML(p.suggestion)}</p>
           </div>
         `).join("");
         if (quickAntiPatterns) quickAntiPatterns.innerHTML = badgesHtml;
@@ -441,7 +502,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); display:flex; flex-direction:column; gap:6px;">
             <div>Functions: <span style="color:var(--cyan);">${sym.functions.map(f => f.name + '()').join(', ') || 'None'}</span></div>
             <div>Classes: <span style="color:var(--amber);">${sym.classes.map(c => c.name).join(', ') || 'None'}</span></div>
-            <div>Imports: <span style="color:var(--purple);">${sym.imports.join(', ') || 'None'}</span></div>
+            <div>Imports: <span style="color:var(--purple);">${escapeHTML(sym.imports.join(', ') || 'None')}</span></div>
           </div>
         `;
       }
@@ -484,6 +545,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   async function renderMermaidDiagram(chartDefinition) {
+    const version = ++graphVersion;
     if (!window.mermaid || !mermaidGraphTarget) return;
     if (!chartDefinition || !chartDefinition.trim()) {
       mermaidGraphTarget.innerHTML = `
@@ -498,6 +560,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const renderId = "mermaid_svg_" + Math.random().toString(36).substring(2, 9);
       const { svg } = await mermaid.render(renderId, chartDefinition);
+      if (version !== graphVersion) return;
       mermaidGraphTarget.innerHTML = svg;
     } catch (err) {
       console.warn("Mermaid render notice:", err);
@@ -525,6 +588,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Sandboxed Test Execution & Fault Localization
   // --------------------------------------------------------------------------
   async function runTests() {
+    if (challengeLoading || !editorChallengeId || runPending) return;
+    runPending = true;
+    const requestChallenge = currentChallengeId;
+    const requestCode = codeEditor.value;
     if (consoleStatus) consoleStatus.textContent = "Executing sandboxed test runner with failure tracing...";
     if (btnRun) btnRun.disabled = true;
 
@@ -532,7 +599,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector('.panel-tab-btn[data-tab="tab-tests"]')?.click();
 
     try {
-      const res = await fetch("/api/run", {
+      const res = await apiFetch("/api/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -541,6 +608,7 @@ document.addEventListener("DOMContentLoaded", () => {
         })
       });
       const data = await res.json();
+      if (requestChallenge !== currentChallengeId || requestCode !== codeEditor.value) return;
 
       if (consolePerf) consolePerf.textContent = `${data.execution_time_ms}ms · ${data.memory_kb}KB`;
 
@@ -564,14 +632,14 @@ document.addEventListener("DOMContentLoaded", () => {
         testCardsContainer.innerHTML = data.test_results.map(t => `
           <div class="test-card" style="border-left: 3px solid ${t.passed ? 'var(--emerald)' : 'var(--rose)'};">
             <div class="test-card-head">
-              <span class="test-card-desc">${t.description}</span>
+              <span class="test-card-desc">${escapeHTML(t.description)}</span>
               <span class="badge ${t.passed ? 'badge-easy' : 'badge-hard'}">${t.passed ? 'PASSED' : 'FAILED'}</span>
             </div>
             <div class="test-details">
-              <div>Call: <span class="call">${t.call}</span></div>
-              <div>Expected: <span class="exp">${t.expected_repr}</span></div>
-              <div>Actual: <span class="${t.passed ? 'act-pass' : 'act-fail'}">${t.actual_repr}</span></div>
-              ${t.error_message ? `<div style="color: var(--rose); margin-top: 4px;">${t.error_message}</div>` : ''}
+              <div>Call: <span class="call">${escapeHTML(t.call)}</span></div>
+              <div>Expected: <span class="exp">${escapeHTML(t.expected_repr)}</span></div>
+              <div>Actual: <span class="${t.passed ? 'act-pass' : 'act-fail'}">${escapeHTML(t.actual_repr)}</span></div>
+              ${t.error_message ? `<div style="color: var(--rose); margin-top: 4px;">${escapeHTML(t.error_message)}</div>` : ''}
               <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Latency: ${t.execution_time_ms}ms</div>
             </div>
           </div>
@@ -580,7 +648,7 @@ document.addEventListener("DOMContentLoaded", () => {
         testCardsContainer.innerHTML = `
           <div class="anti-pattern-alert" style="border-color: var(--rose);">
             <h4 style="color: var(--rose);">Execution Error</h4>
-            <pre style="white-space: pre-wrap; font-family: var(--font-mono); font-size: 11px; color: var(--rose);">${data.stderr}</pre>
+            <pre style="white-space: pre-wrap; font-family: var(--font-mono); font-size: 11px; color: var(--rose);">${escapeHTML(data.stderr)}</pre>
           </div>
         `;
       }
@@ -596,7 +664,8 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Test execution failed:", err);
       if (consoleStatus) consoleStatus.textContent = "Execution request failed.";
     } finally {
-      if (btnRun) btnRun.disabled = false;
+      runPending = false;
+      if (btnRun) btnRun.disabled = challengeLoading || !editorChallengeId;
     }
   }
 
@@ -645,7 +714,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ${report.line_scores.map(s => `
               <tr style="cursor:pointer;" onclick="jumpToEditorLine(${s.line})" title="Click to jump to line ${s.line} in editor">
                 <td style="color:var(--cyan); font-weight:700;">L${s.line}</td>
-                <td style="font-family:var(--font-mono); color:var(--text-main);">${s.source_snippet}</td>
+                <td style="font-family:var(--font-mono); color:var(--text-main);">${escapeHTML(s.source_snippet)}</td>
                 <td class="t-val ${s.ochiai_score >= 0.7 ? 'rose' : 'amber'}">${(s.ochiai_score * 100).toFixed(0)}%</td>
                 <td class="t-val">${(s.tarantula_score * 100).toFixed(0)}%</td>
                 <td>
@@ -680,14 +749,18 @@ document.addEventListener("DOMContentLoaded", () => {
   // Dynamic Property Fuzz Testing
   // --------------------------------------------------------------------------
   async function runPropertyFuzzing() {
+    if (challengeLoading || !editorChallengeId || fuzzPending) return;
+    fuzzPending = true;
+    const requestChallenge = currentChallengeId;
+    const requestCode = codeEditor.value;
     if (consoleStatus) consoleStatus.textContent = "Running property-based fuzz stress testing...";
-    if (btnFuzz) btnFuzz.disabled = true;
+    [btnFuzz, btnRunFuzzInner].forEach(button => { if (button) button.disabled = true; });
 
     switchWorkspace("ws-code");
     document.querySelector('.panel-tab-btn[data-tab="tab-fuzz"]')?.click();
 
     try {
-      const res = await fetch("/api/fuzz", {
+      const res = await apiFetch("/api/fuzz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -696,6 +769,7 @@ document.addEventListener("DOMContentLoaded", () => {
         })
       });
       const data = await res.json();
+      if (requestChallenge !== currentChallengeId || requestCode !== codeEditor.value) return;
 
       if (fuzzSummaryBox) fuzzSummaryBox.style.display = "flex";
       if (data.all_invariants_held) {
@@ -714,13 +788,13 @@ document.addEventListener("DOMContentLoaded", () => {
         fuzzCardsContainer.innerHTML = data.fuzz_results.map(f => `
           <div class="test-card" style="border-left: 3px solid ${f.invariant_held ? 'var(--emerald)' : 'var(--rose)'};">
             <div class="test-card-head">
-              <span class="test-card-desc">Fuzz #${f.fuzz_index}: ${f.property_name}</span>
+              <span class="test-card-desc">Fuzz #${f.fuzz_index}: ${escapeHTML(f.property_name)}</span>
               <span class="badge ${f.invariant_held ? 'badge-easy' : 'badge-hard'}">${f.invariant_held ? 'HELD' : 'VIOLATED'}</span>
             </div>
             <div class="test-details">
-              <div>Vector: <span class="call">${f.input_repr}</span></div>
-              <div>Result: <span class="${f.invariant_held ? 'act-pass' : 'act-fail'}">${f.output_repr}</span></div>
-              ${f.error_message ? `<div style="color:var(--rose);">${f.error_message}</div>` : ''}
+              <div>Vector: <span class="call">${escapeHTML(f.input_repr)}</span></div>
+              <div>Result: <span class="${f.invariant_held ? 'act-pass' : 'act-fail'}">${escapeHTML(f.output_repr)}</span></div>
+              ${f.error_message ? `<div style="color:var(--rose);">${escapeHTML(f.error_message)}</div>` : ''}
               <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Stress Latency: ${f.latency_ms}ms</div>
             </div>
           </div>
@@ -730,7 +804,8 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Fuzz testing error:", err);
       if (consoleStatus) consoleStatus.textContent = "Property fuzzing network error.";
     } finally {
-      if (btnFuzz) btnFuzz.disabled = false;
+      fuzzPending = false;
+      [btnFuzz, btnRunFuzzInner].forEach(button => { if (button) button.disabled = challengeLoading || !editorChallengeId; });
     }
   }
 
@@ -742,7 +817,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // --------------------------------------------------------------------------
   async function loadLeitnerCards() {
     try {
-      const res = await fetch("/api/leitner");
+      const res = await apiFetch("/api/leitner");
       const cards = await res.json();
 
       for (let i = 1; i <= 5; i++) {
@@ -821,6 +896,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Socratic Mentoring Controller (Dock & Terminal)
   // --------------------------------------------------------------------------
   async function consultSocrates(studentPrompt = null) {
+    if (challengeLoading || !editorChallengeId) return;
+    const requestChallenge = currentChallengeId;
+    const requestCode = codeEditor.value;
     if (consoleStatus) consoleStatus.textContent = "Consulting Socratic Pedagogical Coach...";
     try {
       const payload = {
@@ -832,12 +910,13 @@ document.addEventListener("DOMContentLoaded", () => {
         failed_test: lastFailedTest
       };
 
-      const res = await fetch("/api/socratic-hint", {
+      const res = await apiFetch("/api/socratic-hint", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
+      if (requestChallenge !== currentChallengeId || requestCode !== codeEditor.value) return;
 
       if (dockSocTier) dockSocTier.textContent = data.level_name;
       if (dockSocTitle) dockSocTitle.textContent = data.title;
@@ -866,10 +945,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!terminalChatLog) return;
     const msgEl = document.createElement("div");
     msgEl.className = `terminal-msg ${role}`;
-    const promptLabel = role === "student" ? "faris@student:~$" : "tark@socrates:~$";
+    const promptLabel = role === "student" ? "You" : "Tark · Coach";
     msgEl.innerHTML = `
       <span class="t-prompt">${promptLabel}</span>
-      <div style="white-space: pre-wrap;">${text}</div>
+      <div style="white-space: pre-wrap;">${escapeHTML(text)}</div>
     `;
     terminalChatLog.appendChild(msgEl);
     terminalChatLog.scrollTop = terminalChatLog.scrollHeight;
@@ -907,7 +986,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // --------------------------------------------------------------------------
   async function loadStats() {
     try {
-      const res = await fetch("/api/stats");
+      const res = await apiFetch("/api/stats");
       const data = await res.json();
       if (statStreak) statStreak.textContent = `${data.streak_days}d`;
       if (statLoc) statLoc.textContent = data.total_loc_analyzed;

@@ -4,11 +4,21 @@ Verifies process isolation, assertion testing, exception reporting, and infinite
 """
 
 import sys
+import pytest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 from models import TestCase
 from sandbox import execute_sandboxed
+
+
+@pytest.mark.parametrize("expected", [True, False, None, {"ok": True, "value": None}, "quotes ' and \\\nnewlines"])
+def test_sandbox_preserves_json_fixture_types(expected):
+    result = execute_sandboxed(
+        f"def answer(): return {expected!r}",
+        [TestCase(description="Fixture round trip", call="answer()", expected=expected)],
+    )
+    assert result.overall_passed, result.stderr
 
 
 def test_sandbox_passing_execution():
