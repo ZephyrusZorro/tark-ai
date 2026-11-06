@@ -1,7 +1,8 @@
 """
 TarkAI — FastAPI Application Server
 Provides RESTful APIs for AST analysis, sandboxed execution,
-curriculum retrieval, Socratic mentoring, and serves the static frontend UI.
+curriculum retrieval, Socratic mentoring, Leitner spaced repetition,
+and serves the static frontend developer studio.
 """
 
 from pathlib import Path
@@ -21,7 +22,13 @@ from ast_analyzer import analyze_code_ast
 from sandbox import execute_sandboxed
 from curriculum import get_all_challenges, get_challenge_by_id
 from socratic_tutor import generate_socratic_guidance
-from db import init_db, record_submission, get_solved_ids, get_stats
+from db import (
+    init_db,
+    record_submission,
+    get_solved_ids,
+    get_stats,
+    get_all_leitner_cards
+)
 
 app = FastAPI(
     title="TarkAI (तर्क) — Local-First Code Auditor & AST Tutor",
@@ -118,9 +125,9 @@ def run_code(submission: CodeSubmission):
     # 2. Execute against test cases
     exec_res = execute_sandboxed(submission.code, chal["test_cases"])
 
-    # 3. Record in DB
+    # 3. Record in DB and update Leitner spaced repetition interval
     complexity_str = ast_res.complexity.estimated_time if ast_res.complexity else "O(N)"
-    record_submission(
+    leitner_info = record_submission(
         challenge_id=submission.challenge_id,
         code=submission.code,
         passed=exec_res.overall_passed,
@@ -130,12 +137,18 @@ def run_code(submission: CodeSubmission):
         complexity=complexity_str
     )
 
+    exec_res.spaced_repetition_update = leitner_info
     return exec_res
 
 
 @app.post("/api/socratic-hint", response_model=SocraticHintResponse)
 def get_socratic_hint(request: SocraticHintRequest):
     return generate_socratic_guidance(request)
+
+
+@app.get("/api/leitner")
+def get_leitner_cards():
+    return get_all_leitner_cards()
 
 
 @app.get("/api/stats", response_model=UserStats)

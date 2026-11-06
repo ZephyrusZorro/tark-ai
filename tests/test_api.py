@@ -37,6 +37,8 @@ def test_api_analyze_code():
     data = res.json()
     assert data["syntax_valid"] is True
     assert data["complexity"]["estimated_time"] == "O(N^2)"
+    assert data["complexity"]["halstead"] is not None
+    assert data["mermaid_flowchart"] is not None
 
 
 def test_api_run_challenge_pass():
@@ -63,6 +65,8 @@ def two_sum_sorted(numbers: list[int], target: int) -> list[int]:
     assert data["overall_passed"] is True
     assert data["passed_count"] == data["total_count"]
     assert len(data["test_results"]) >= 4
+    assert data["spaced_repetition_update"] is not None
+    assert data["spaced_repetition_update"]["box"] >= 1
 
 
 def test_api_socratic_hint():
@@ -76,3 +80,18 @@ def test_api_socratic_hint():
     assert data["hint_level"] == 1
     assert "guidance" in data
     assert "question_to_ponder" in data
+
+
+def test_api_leitner_cards():
+    res = client.get("/api/leitner")
+    assert res.status_code == 200
+    data = res.json()
+    assert isinstance(data, list)
+
+
+def test_api_stats():
+    res = client.get("/api/stats")
+    assert res.status_code == 200
+    data = res.json()
+    assert "total_attempts" in data
+    assert "problems_solved" in data
