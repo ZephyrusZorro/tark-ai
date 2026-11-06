@@ -81,6 +81,10 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
         Socratic Hint
       </button>
+      <button type="button" class="btn btn-secondary" id="btn-fuzz" title="Run property-based fuzz stress testing">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+        Property Fuzz
+      </button>
       <button type="button" class="btn btn-primary" id="btn-run" title="Ctrl+Enter">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
         Run Tests (Ctrl+Enter)
@@ -172,6 +176,8 @@
             </div>
             <div class="panel-tabs">
               <button type="button" class="panel-tab-btn active" data-tab="tab-tests">TESTS</button>
+              <button type="button" class="panel-tab-btn" data-tab="tab-fault-loc">FAULT LOC (SBFL)</button>
+              <button type="button" class="panel-tab-btn" data-tab="tab-fuzz">PROPERTY FUZZ</button>
               <button type="button" class="panel-tab-btn" data-tab="tab-ast-summary">AST SUMMARY</button>
               <button type="button" class="panel-tab-btn" data-tab="tab-socratic-dock">SOCRATES</button>
             </div>
@@ -188,6 +194,42 @@
                 <div class="empty-state">
                   <div class="empty-icon">⚙</div>
                   <p>Click <strong>"Run Tests"</strong> (Ctrl+Enter) to evaluate your algorithm against sandboxed test cases.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subtab: Spectrum-Based Fault Localization (Tarantula / Ochiai) -->
+            <div class="subtab-pane" id="tab-fault-loc">
+              <div id="sbfl-summary-box" class="anti-pattern-alert" style="margin-bottom: 10px; display:none;">
+                <h4 id="sbfl-headline">Ochiai Fault Localization Ready</h4>
+                <p id="sbfl-desc">Run tests to compute execution failure correlations.</p>
+              </div>
+
+              <div class="section-label-sm">LINE SUSPICIOUSNESS SPECTRUM</div>
+              <div id="sbfl-table-container">
+                <div class="empty-state">
+                  <div class="empty-icon">🎯</div>
+                  <p>When tests fail, Spectrum-Based Fault Localization (SBFL) calculates line suspiciousness using Tarantula &amp; Ochiai formulas to pinpoint the root cause.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subtab: Property-Based Fuzzing -->
+            <div class="subtab-pane" id="tab-fuzz">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span class="section-label-sm" style="margin:0;">ALGEBRAIC INVARIANT STRESS</span>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-run-fuzz-inner">Run Fuzz Vectors</button>
+              </div>
+
+              <div id="fuzz-summary-box" class="test-summary pass" style="display:none;">
+                <span id="fuzz-summary-text">5 / 5 Invariants Held</span>
+                <span id="fuzz-summary-meta">Stress Passed</span>
+              </div>
+
+              <div id="fuzz-cards-container">
+                <div class="empty-state">
+                  <div class="empty-icon">⚡</div>
+                  <p>Click "Run Property Fuzz" to stress-test your code against dynamic edge cases and boundary limits.</p>
                 </div>
               </div>
             </div>
@@ -260,6 +302,10 @@
             </div>
             <div class="w-title">02_AST_EXECUTION_FLOWCHART.DIAGRAM</div>
             <div class="flowchart-tools">
+              <div style="display:flex; gap:2px; margin-right:6px;">
+                <button type="button" class="btn btn-secondary btn-sm active" id="btn-view-cfg">CFG Basic Blocks</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-view-ast">AST Hierarchy</button>
+              </div>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-flowchart">Re-Render Graph</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-zoom-reset">Reset View</button>
             </div>

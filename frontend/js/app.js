@@ -1,7 +1,8 @@
 /**
- * TarkAI (तर्क) — Master Client-Side Application Studio Controller
- * Inspired by Rao Muhammad Hamza's terminal / window-manager design system.
- * Manages workspaces, AST visualization, Halstead metrics, Leitner recall, and Socratic mentoring.
+ * TarkAI (तर्क) — Master Client-Side Application Studio Controller (v2.0)
+ * Inspired by compiler intermediate representations & Rao Muhammad Hamza's retro window manager.
+ * Features: Control Flow Graphs (CFG), Basic Blocks, Spectrum-Based Fault Localization (Tarantula/Ochiai),
+ * Dynamic Property-Based Fuzzing, Halstead Metrics, FSRS Spaced Recall, and Socratic Mentoring.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -14,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let lastFailedTest = null;
   let chatHistory = [];
   let currentAstData = null;
+  let currentFlowchartMode = "cfg"; // "cfg" or "ast"
 
   // Initialize Mermaid.js
   if (window.mermaid) {
@@ -52,7 +54,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Header & Status
   const utcClock = document.getElementById("utc-clock");
   const btnScanlines = document.getElementById("btn-scanlines");
-  const scanlinesLayer = document.getElementById("scanlines-layer");
   const topChalTitle = document.getElementById("top-chal-title");
   const topTrackCode = document.getElementById("top-track-code");
   const topChalDiff = document.getElementById("top-chal-diff");
@@ -80,17 +81,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Action Buttons
   const btnRun = document.getElementById("btn-run");
+  const btnFuzz = document.getElementById("btn-fuzz");
+  const btnRunFuzzInner = document.getElementById("btn-run-fuzz-inner");
   const btnAnalyze = document.getElementById("btn-analyze");
   const btnHint = document.getElementById("btn-hint");
   const btnReset = document.getElementById("btn-reset");
   const btnRefreshFlowchart = document.getElementById("btn-refresh-flowchart");
   const btnZoomReset = document.getElementById("btn-zoom-reset");
+  const btnViewCfg = document.getElementById("btn-view-cfg");
+  const btnViewAst = document.getElementById("btn-view-ast");
 
   // Test Runner Elements
   const testSummaryBox = document.getElementById("test-summary-box");
   const testSummaryText = document.getElementById("test-summary-text");
   const testSummaryTime = document.getElementById("test-summary-time");
   const testCardsContainer = document.getElementById("test-cards-container");
+
+  // SBFL Fault Localization Elements
+  const sbflSummaryBox = document.getElementById("sbfl-summary-box");
+  const sbflHeadline = document.getElementById("sbfl-headline");
+  const sbflDesc = document.getElementById("sbfl-desc");
+  const sbflTableContainer = document.getElementById("sbfl-table-container");
+
+  // Property Fuzzing Elements
+  const fuzzSummaryBox = document.getElementById("fuzz-summary-box");
+  const fuzzSummaryText = document.getElementById("fuzz-summary-text");
+  const fuzzSummaryMeta = document.getElementById("fuzz-summary-meta");
+  const fuzzCardsContainer = document.getElementById("fuzz-cards-container");
 
   // AST Elements (Quick & Full)
   const astQuickComplexity = document.getElementById("ast-quick-complexity");
@@ -167,8 +184,8 @@ document.addEventListener("DOMContentLoaded", () => {
       p.classList.toggle("active", p.id === targetId);
     });
 
-    if (targetId === "ws-ast" && currentAstData && currentAstData.mermaid_flowchart) {
-      renderMermaidDiagram(currentAstData.mermaid_flowchart);
+    if (targetId === "ws-ast") {
+      updateFlowchartRender();
     }
     if (targetId === "ws-leitner") {
       loadLeitnerCards();
@@ -222,7 +239,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   codeEditor.addEventListener("keydown", (e) => {
-    // Tab key inserts 4 spaces
     if (e.key === "Tab") {
       e.preventDefault();
       const start = codeEditor.selectionStart;
@@ -232,13 +248,11 @@ document.addEventListener("DOMContentLoaded", () => {
       updateLineNumbers();
     }
 
-    // Ctrl+Enter or Cmd+Enter runs tests
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
       runTests();
     }
 
-    // Ctrl+Shift+A analyzes AST
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a")) {
       e.preventDefault();
       analyzeAST();
@@ -335,10 +349,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --------------------------------------------------------------------------
-  // AST Semantic Analysis & Flowchart Rendering
+  // AST Semantic Analysis & CFG Rendering
   // --------------------------------------------------------------------------
   async function analyzeAST() {
-    consoleStatus.textContent = "Parsing Abstract Syntax Tree & computing Halstead bounds...";
+    consoleStatus.textContent = "Parsing AST, synthesizing Control Flow Graph (CFG) & calculating Halstead bounds...";
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -427,17 +441,36 @@ document.addEventListener("DOMContentLoaded", () => {
       astQuickTree.textContent = JSON.stringify(data.tree_hierarchy, null, 2);
       fullAstTree.textContent = JSON.stringify(data.tree_hierarchy, null, 2);
 
-      // Render Mermaid flowchart
-      if (data.mermaid_flowchart) {
-        renderMermaidDiagram(data.mermaid_flowchart);
-      }
-
-      consoleStatus.textContent = `AST Ready: ${comp.estimated_time} Complexity (${comp.reason})`;
+      updateFlowchartRender();
+      consoleStatus.textContent = `AST Ready: ${comp.estimated_time} (${comp.reason}) · CFG Blocks: ${data.cfg_analysis?.total_blocks || 0}`;
     } catch (err) {
       console.error("AST parsing error:", err);
       consoleStatus.textContent = "AST parsing network error.";
     }
   }
+
+  function updateFlowchartRender() {
+    if (!currentAstData) return;
+    if (currentFlowchartMode === "cfg" && currentAstData.cfg_analysis && currentAstData.cfg_analysis.mermaid_cfg) {
+      renderMermaidDiagram(currentAstData.cfg_analysis.mermaid_cfg);
+    } else if (currentAstData.mermaid_flowchart) {
+      renderMermaidDiagram(currentAstData.mermaid_flowchart);
+    }
+  }
+
+  btnViewCfg?.addEventListener("click", () => {
+    currentFlowchartMode = "cfg";
+    btnViewCfg.classList.add("active");
+    btnViewAst.classList.remove("active");
+    updateFlowchartRender();
+  });
+
+  btnViewAst?.addEventListener("click", () => {
+    currentFlowchartMode = "ast";
+    btnViewAst.classList.add("active");
+    btnViewCfg.classList.remove("active");
+    updateFlowchartRender();
+  });
 
   async function renderMermaidDiagram(chartDefinition) {
     if (!window.mermaid) return;
@@ -458,28 +491,21 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   btnRefreshFlowchart?.addEventListener("click", () => {
-    if (currentAstData && currentAstData.mermaid_flowchart) {
-      renderMermaidDiagram(currentAstData.mermaid_flowchart);
-    } else {
-      analyzeAST();
-    }
+    updateFlowchartRender();
   });
 
   btnZoomReset?.addEventListener("click", () => {
     const svg = mermaidGraphTarget.querySelector("svg");
-    if (svg) {
-      svg.style.transform = "none";
-    }
+    if (svg) svg.style.transform = "none";
   });
 
   // --------------------------------------------------------------------------
-  // Sandboxed Test Execution
+  // Sandboxed Test Execution & Fault Localization
   // --------------------------------------------------------------------------
   async function runTests() {
-    consoleStatus.textContent = "Executing sandboxed test runner...";
+    consoleStatus.textContent = "Executing sandboxed test runner with failure tracing...";
     btnRun.disabled = true;
 
-    // Switch to Workspace 1, Tests tab
     switchWorkspace("ws-code");
     document.querySelector('.panel-tab-btn[data-tab="tab-tests"]')?.click();
 
@@ -508,10 +534,11 @@ document.addEventListener("DOMContentLoaded", () => {
         testSummaryBox.className = "test-summary fail";
         testSummaryText.textContent = `✕ ${data.passed_count} / ${data.total_count} Tests Passed`;
         testSummaryTime.textContent = `${data.execution_time_ms}ms`;
-        consoleStatus.textContent = "Some test assertions failed. Inspect failures below.";
+        consoleStatus.textContent = "Some test assertions failed. Inspect SBFL Fault Localization tab for suspect lines.";
         lastFailedTest = data.test_results?.find(t => !t.passed) || null;
       }
 
+      // Render Test Cards
       if (data.test_results && data.test_results.length > 0) {
         testCardsContainer.innerHTML = data.test_results.map(t => `
           <div class="test-card" style="border-left: 3px solid ${t.passed ? 'var(--emerald)' : 'var(--rose)'};">
@@ -537,7 +564,11 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
       }
 
-      // Also trigger AST update
+      // Render SBFL Fault Localization
+      if (data.fault_localization) {
+        renderFaultLocalization(data.fault_localization);
+      }
+
       analyzeAST();
       loadLeitnerCards();
       loadStats();
@@ -549,6 +580,130 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function renderFaultLocalization(report) {
+    if (!report.has_failures) {
+      sbflSummaryBox.style.display = "block";
+      sbflSummaryBox.style.borderColor = "var(--emerald)";
+      sbflHeadline.textContent = "✓ Clean Spectrum Execution";
+      sbflHeadline.style.color = "var(--emerald)";
+      sbflDesc.textContent = "All test assertions passed. Line suspiciousness is 0.00 across all execution traces.";
+      sbflTableContainer.innerHTML = `
+        <div style="background: var(--emerald-bg); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; padding: 10px;">
+          <p style="font-size: 11px; color: var(--emerald); font-family: var(--font-mono);">
+            Zero fault anomalies detected. Mathematical execution paths fully consistent.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    sbflSummaryBox.style.display = "block";
+    sbflSummaryBox.style.borderColor = "var(--rose)";
+    sbflHeadline.textContent = `Suspect Line ${report.most_suspicious_line || '?'}`;
+    sbflHeadline.style.color = "var(--rose)";
+    sbflDesc.textContent = report.pedagogical_diagnosis;
+
+    if (report.line_scores && report.line_scores.length > 0) {
+      sbflTableContainer.innerHTML = `
+        <table class="halstead-table" style="font-size: 10px;">
+          <thead>
+            <tr>
+              <th>LINE</th>
+              <th>SNIPPET</th>
+              <th>OCHIAI</th>
+              <th>TARANTULA</th>
+              <th>VERDICT</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${report.line_scores.map(s => `
+              <tr style="cursor:pointer;" onclick="jumpToEditorLine(${s.line})">
+                <td style="color:var(--cyan); font-weight:700;">L${s.line}</td>
+                <td style="font-family:var(--font-mono); color:var(--text-main);">${s.source_snippet}</td>
+                <td class="t-val ${s.ochiai_score >= 0.7 ? 'rose' : 'amber'}">${(s.ochiai_score * 100).toFixed(0)}%</td>
+                <td class="t-val">${(s.tarantula_score * 100).toFixed(0)}%</td>
+                <td>
+                  <span class="badge ${s.verdict === 'CRITICAL' ? 'badge-hard' : s.verdict === 'SUSPICIOUS' ? 'badge-medium' : 'badge-easy'}">
+                    ${s.verdict}
+                  </span>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+  }
+
+  window.jumpToEditorLine = (line) => {
+    const lines = codeEditor.value.split("\n");
+    let pos = 0;
+    for (let i = 0; i < line - 1 && i < lines.length; i++) {
+      pos += lines[i].length + 1;
+    }
+    codeEditor.focus();
+    codeEditor.setSelectionRange(pos, pos + (lines[line - 1]?.length || 0));
+  };
+
+  // --------------------------------------------------------------------------
+  // Dynamic Property Fuzz Testing
+  // --------------------------------------------------------------------------
+  async function runPropertyFuzzing() {
+    consoleStatus.textContent = "Running property-based fuzz stress testing...";
+    if (btnFuzz) btnFuzz.disabled = true;
+
+    // Switch to Property Fuzz subtab
+    document.querySelector('.panel-tab-btn[data-tab="tab-fuzz"]')?.click();
+
+    try {
+      const res = await fetch("/api/fuzz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challenge_id: currentChallengeId,
+          code: codeEditor.value
+        })
+      });
+      const data = await res.json();
+
+      fuzzSummaryBox.style.display = "flex";
+      if (data.all_invariants_held) {
+        fuzzSummaryBox.className = "test-summary pass";
+        fuzzSummaryText.textContent = `✓ ${data.passed_fuzz_tests} / ${data.total_fuzz_tests} Invariants Held (100%)`;
+        fuzzSummaryMeta.textContent = "Stress Passed";
+        consoleStatus.textContent = "All algebraic invariants held under property fuzzing!";
+      } else {
+        fuzzSummaryBox.className = "test-summary fail";
+        fuzzSummaryText.textContent = `✕ ${data.passed_fuzz_tests} / ${data.total_fuzz_tests} Invariants Held`;
+        fuzzSummaryMeta.textContent = "Invariant Violations";
+        consoleStatus.textContent = "Property fuzzing detected invariant violations under extreme boundaries.";
+      }
+
+      fuzzCardsContainer.innerHTML = data.fuzz_results.map(f => `
+        <div class="test-card" style="border-left: 3px solid ${f.invariant_held ? 'var(--emerald)' : 'var(--rose)'};">
+          <div class="test-card-head">
+            <span class="test-card-desc">Fuzz #${f.fuzz_index}: ${f.property_name}</span>
+            <span class="badge ${f.invariant_held ? 'badge-easy' : 'badge-hard'}">${f.invariant_held ? 'HELD' : 'VIOLATED'}</span>
+          </div>
+          <div class="test-details">
+            <div>Vector: <span class="call">${f.input_repr}</span></div>
+            <div>Result: <span class="${f.invariant_held ? 'act-pass' : 'act-fail'}">${f.output_repr}</span></div>
+            ${f.error_message ? `<div style="color:var(--rose);">${f.error_message}</div>` : ''}
+            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Stress Latency: ${f.latency_ms}ms</div>
+          </div>
+        </div>
+      `).join("");
+    } catch (err) {
+      console.error("Fuzz testing error:", err);
+      consoleStatus.textContent = "Property fuzzing network error.";
+    } finally {
+      if (btnFuzz) btnFuzz.disabled = false;
+    }
+  }
+
+  btnFuzz?.addEventListener("click", runPropertyFuzzing);
+  btnRunFuzzInner?.addEventListener("click", runPropertyFuzzing);
+
   // --------------------------------------------------------------------------
   // Leitner Spaced Repetition Station
   // --------------------------------------------------------------------------
@@ -557,7 +712,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch("/api/leitner");
       const cards = await res.json();
 
-      // Clear boxes
       for (let i = 1; i <= 5; i++) {
         const countEl = document.getElementById(`lbox-${i}-count`);
         const cardsEl = document.getElementById(`lbox-${i}-cards`);
@@ -600,7 +754,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      // Update box counts
       for (let i = 1; i <= 5; i++) {
         const countEl = document.getElementById(`lbox-${i}-count`);
         const cardsEl = document.getElementById(`lbox-${i}-cards`);
@@ -649,13 +802,11 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const data = await res.json();
 
-      // Update Dock
       dockSocTier.textContent = data.level_name;
       dockSocTitle.textContent = data.title;
       dockSocGuidance.textContent = data.guidance;
       dockSocQuestion.textContent = data.question_to_ponder;
 
-      // Update Terminal
       terminalTierPill.textContent = data.level_name.toUpperCase();
 
       if (studentPrompt) {
@@ -668,8 +819,6 @@ document.addEventListener("DOMContentLoaded", () => {
       chatHistory.push({ role: "tutor", content: tutorResponse });
 
       consoleStatus.textContent = `Socratic Advice (${data.level_name}) ready.`;
-
-      // Cycle hint levels (1 -> 2 -> 3 -> 1)
       currentHintLevel = currentHintLevel >= 3 ? 1 : currentHintLevel + 1;
     } catch (err) {
       console.error("Socratic consultation error:", err);
@@ -688,7 +837,6 @@ document.addEventListener("DOMContentLoaded", () => {
     terminalChatLog.scrollTop = terminalChatLog.scrollHeight;
   }
 
-  // Quick Chips
   document.querySelectorAll(".s-chip").forEach(chip => {
     chip.addEventListener("click", () => {
       const q = chip.getAttribute("data-query");

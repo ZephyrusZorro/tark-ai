@@ -1114,6 +1114,7 @@ body:not(.scanlines-active) .scanlines-overlay {
 .halstead-table .t-val.cyan { color: var(--cyan); }
 .halstead-table .t-val.amber { color: var(--amber); }
 .halstead-table .t-val.purple { color: var(--purple); }
+.halstead-table .t-val.rose { color: var(--rose); }
 
 /* --------------------------------------------------------------------------
    WORKSPACE 4: Leitner Spaced Repetition Station
