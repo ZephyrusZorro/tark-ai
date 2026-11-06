@@ -450,9 +450,11 @@ def analyze_code_ast(code: str) -> ASTAnalysisResult:
         elif isinstance(node, ast.ImportFrom):
             symbols.imports.append(node.module or "relative")
 
-    # 4. Tree representation & Mermaid graph
+    # 4. Tree representation, Mermaid graph & Control Flow Graph (CFG)
     tree_hierarchy = ast_to_dict(tree)
     mermaid_chart = generate_mermaid_flowchart(tree)
+    from cfg_engine import generate_control_flow_graph
+    cfg_res = generate_control_flow_graph(code)
 
     return ASTAnalysisResult(
         syntax_valid=True,
@@ -460,5 +462,6 @@ def analyze_code_ast(code: str) -> ASTAnalysisResult:
         anti_patterns=anti_visitor.reports,
         symbol_table=symbols,
         tree_hierarchy=tree_hierarchy,
-        mermaid_flowchart=mermaid_chart
+        mermaid_flowchart=mermaid_chart,
+        cfg_analysis=cfg_res
     )
