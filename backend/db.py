@@ -118,8 +118,9 @@ def update_leitner_card(challenge_id: str, passed: bool) -> Dict[str, Any]:
 
 
 def get_all_leitner_cards() -> List[Dict[str, Any]]:
-    """Retrieves all spaced repetition cards with due status."""
-    now_iso = datetime.now(timezone.utc).isoformat()
+    """Retrieves all spaced repetition cards with FSRS retrievability telemetry."""
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
     with get_db() as conn:
         rows = conn.execute("""
             SELECT challenge_id, box, interval_days, next_due, attempts, failures, last_reviewed_at,
@@ -128,7 +129,25 @@ def get_all_leitner_cards() -> List[Dict[str, Any]]:
             ORDER BY box ASC, next_due ASC
         """, (now_iso,)).fetchall()
 
-        return [dict(r) for r in rows]
+        cards = []
+        for r in rows:
+            d = dict(r)
+            # FSRS memory retrievability formula: R = (1 + t / (9 * S)) ^ -1
+            try:
+                last_dt = datetime.fromisoformat(r["last_reviewed_at"]) if r["last_reviewed_at"] else now
+                if last_dt.tzinfo is None:
+                    last_dt = last_dt.replace(tzinfo=timezone.utc)
+                elapsed_days = max(0.0, (now - last_dt).total_seconds() / 86400.0)
+            except Exception:
+                elapsed_days = 0.0
+
+            stability = float(r["interval_days"] or 1)
+            retrievability = round((1.0 + (elapsed_days / (9.0 * max(0.5, stability)))) ** -1 * 100.0, 1)
+            d["stability_days"] = stability
+            d["retrievability_pct"] = retrievability
+            cards.append(d)
+
+        return cards
 
 
 def record_submission(
