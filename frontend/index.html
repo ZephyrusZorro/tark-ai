@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TarkAI (तर्क) — Local-First Intelligent Code Auditor & AST Socratic Tutor</title>
+  <meta name="description" content="Production AST analysis, complexity inspection, and Socratic code mentoring by Faris Ruknuddin.">
+  <link rel="stylesheet" href="/css/tark.css">
+</head>
+<body>
+  <!-- Top Application Bar -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-logo">
+        <span class="hindi">तर्क</span> TARK.AI
+      </div>
+      <span class="brand-badge">AST Semantic Auditor &amp; Tutor</span>
+    </div>
+
+    <div class="nav-status">
+      <span class="status-dot"></span>
+      <span>SANDBOX ONLINE · SUBPROCESS ISOLATION</span>
+    </div>
+
+    <div class="nav-actions">
+      <button type="button" class="btn btn-secondary" id="btn-analyze" title="Ctrl+Shift+A">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg>
+        Inspect AST
+      </button>
+      <button type="button" class="btn btn-amber" id="btn-hint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+        Socratic Hint
+      </button>
+      <button type="button" class="btn btn-primary" id="btn-run" title="Ctrl+Enter">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Run Tests (Ctrl+Enter)
+      </button>
+    </div>
+  </header>
+
+  <!-- Main 3-Column Studio -->
+  <main class="app-container">
+    <!-- Left Column: Curriculum & Challenge Specification -->
+    <aside class="panel">
+      <div class="panel-header">
+        <span>Engineering Tracks</span>
+        <span id="curriculum-count" class="brand-badge">0 / 0 Solved</span>
+      </div>
+      <div class="panel-content">
+        <div class="curriculum-list" id="challenge-list">
+          <!-- Dynamically populated from /api/curriculum -->
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 16px 0;">
+
+        <div id="problem-spec" class="problem-markdown">
+          <h3 id="prob-title">Loading Challenge...</h3>
+          <p id="prob-summary"></p>
+          <div id="prob-description"></div>
+          
+          <h3 style="margin-top: 14px;">Constraints</h3>
+          <ul class="constraints-list" id="prob-constraints"></ul>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center Column: Active Code Editor & Console -->
+    <section class="panel editor-panel">
+      <div class="panel-header">
+        <span id="editor-filename">solution.py</span>
+        <button type="button" class="btn btn-secondary" id="btn-reset" style="padding: 4px 8px; font-size: 11px;">Reset Starter</button>
+      </div>
+      <div class="editor-wrapper">
+        <div class="line-numbers" id="line-numbers">1<br>2<br>3<br>4<br>5</div>
+        <textarea id="code-editor" spellcheck="false" placeholder="# Write your Python implementation here..."></textarea>
+      </div>
+      <div class="console-bar">
+        <span id="console-status">Ready. Press Ctrl+Enter to run sandboxed verification.</span>
+        <span id="console-perf">0.00ms</span>
+      </div>
+    </section>
+
+    <!-- Right Column: Multi-Tab Inspection (Tests, AST, Socratic Coach) -->
+    <aside class="panel">
+      <nav class="tab-nav">
+        <button type="button" class="tab-btn active" data-tab="tab-tests">Test Results</button>
+        <button type="button" class="tab-btn" data-tab="tab-ast">AST &amp; Complexity</button>
+        <button type="button" class="tab-btn" data-tab="tab-socratic">Socratic Coach</button>
+      </nav>
+
+      <!-- Tab 1: Test Results -->
+      <div class="tab-content active" id="tab-tests">
+        <div class="test-summary pass" id="test-summary-box" style="display: none;">
+          <span id="test-summary-text">5 / 5 Tests Passed</span>
+          <span id="test-summary-time">0.82ms</span>
+        </div>
+        <div id="test-cards-container">
+          <p style="color: var(--text-muted); font-size: 12px;">Click "Run Tests" to execute your solution against sandboxed assertions.</p>
+        </div>
+      </div>
+
+      <!-- Tab 2: AST Inspector -->
+      <div class="tab-content" id="tab-ast">
+        <div class="metric-grid">
+          <div class="metric-box">
+            <div class="metric-label">Estimated Complexity</div>
+            <div class="metric-value val-complexity" id="ast-complexity">O(1)</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Max Loop Nesting</div>
+            <div class="metric-value val-nesting" id="ast-nesting">0 Levels</div>
+          </div>
+        </div>
+
+        <div id="anti-patterns-container"></div>
+
+        <div style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-dim); margin-bottom: 6px;">
+          AST Hierarchy Tree
+        </div>
+        <pre class="tree-view" id="ast-tree-pre">{ "status": "Ready to parse AST" }</pre>
+      </div>
+
+      <!-- Tab 3: Socratic Coach -->
+      <div class="tab-content" id="tab-socratic">
+        <div id="socratic-container">
+          <div class="socratic-card">
+            <div class="socratic-tier" id="soc-tier">Level 1: Conceptual Invariant</div>
+            <div class="socratic-title" id="soc-title">Socratic Guidance Ready</div>
+            <p class="socratic-guidance" id="soc-guidance">
+              TarkAI guides you to formulate algorithmic invariants yourself instead of handing out answers. Run your code or ask a question below.
+            </p>
+            <div class="socratic-question-box">
+              <p id="soc-question">What fundamental relationship between input and output are you trying to maintain?</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <label style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 6px;">
+            Ask the Socratic Coach:
+          </label>
+          <form id="chat-form" class="chat-input-row">
+            <input type="text" id="chat-query" class="chat-input" placeholder="e.g. Why did test case 2 fail? How can I reduce O(N^2)?">
+            <button type="submit" class="btn btn-secondary">Ask</button>
+          </form>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
