@@ -27,7 +27,7 @@ Furthermore, naive online coding tutors execute untrusted student submissions wi
 1. **Static AST Semantic Introspection:** Evaluates time complexity ($O(1) \rightarrow O(N) \rightarrow O(N^2) \rightarrow O(2^N)$), loop nesting depth, and static anti-patterns *before* code execution.
 2. **Halstead Software Engineering Metrics:** Computes programmatic Volume ($V$), Difficulty ($D$), Intellectual Effort ($E$), and Cognitive Complexity.
 3. **Visual AST Execution Flowchart:** Dynamically renders an offline Mermaid flowchart graph tracing functions, loops, and branching paths.
-4. **Process-Isolated Sandbox:** Runs test cases in an isolated subprocess with strict timeout guards (2.5s) and peak memory tracking via `tracemalloc`.
+4. **Timed subprocess runner:** Runs local practice submissions in a child process with a 2.5-second timeout and peak Python allocation tracking via `tracemalloc`. Run submissions you trust.
 5. **Leitner 5-Box Spaced Repetition Drill Engine:** Tracks retrieval schedules across 1, 3, 7, 14, and 30-day review intervals to cement algorithmic intuition.
 6. **Tiered Socratic Mentoring:** Formulates 3-tier pedagogical feedback (*Conceptual Invariant* $\rightarrow$ *Algorithmic Strategy* $\rightarrow$ *Structural Scaffold*) that guides the student to discover the invariant themselves.
 
@@ -38,7 +38,7 @@ Furthermore, naive online coding tutors execute untrusted student submissions wi
 ```mermaid
 flowchart TD
     Client["Client Browser (Obsidian Engineering Studio)"] -->|POST /api/analyze| ASTEngine["AST Semantic Analyzer (ast.NodeVisitor)"]
-    Client -->|POST /api/run| Sandbox["Subprocess Isolated Sandbox"]
+    Client -->|POST /api/run| Sandbox["Local subprocess runner"]
     Client -->|POST /api/socratic-hint| Socratic["Socratic Pedagogical Engine"]
     Client -->|GET /api/leitner| Leitner["Leitner Spaced Repetition Engine"]
     
@@ -49,7 +49,7 @@ flowchart TD
         ASTEngine --> MermaidGen["Mermaid Flowchart Generator"]
     end
 
-    subgraph "Sandboxed Execution Layer"
+    subgraph "Local execution"
         Sandbox --> Subproc["Subprocess Worker (timeout=2.5s)"]
         Subproc --> MemoryTracer["Tracemalloc (Peak KB)"]
         Subproc --> Assertions["Test Suite Assertion Evaluator"]
@@ -87,13 +87,13 @@ TarkAI provides 5 dedicated workspaces accessible via the top status bar or hotk
 
 * **⚡ Zero-Token Static AST Analysis:** Inspects code complexity and anti-patterns purely on the CPU using Python's native `ast` module without costly or slow LLM API calls.
 * **📐 Halstead Software Metrics:** Computes distinct operators $\eta_1$, distinct operands $\eta_2$, total operators $N_1$, total operands $N_2$, vocabulary $\eta = \eta_1 + \eta_2$, volume $V = N \log_2 \eta$, difficulty $D = (\eta_1 / 2) \times (N_2 / \eta_2)$, and effort $E = D \times V$.
-* **🛡️ Hardened Subprocess Sandbox:** Kills infinite loops (`while True: pass`) and deep recursion bombs cleanly within 2.5 seconds with exact diagnostics.
+* **Subprocess timeout:** Ends a run that exceeds its time limit and reports the timeout in the practice interface.
 * **🧠 Socratic Hint Ladder:**
   * **Level 1 (Conceptual):** Points to the mathematical invariant or boundary edge case being violated.
   * **Level 2 (Algorithmic):** Suggests appropriate pointer movements, window bounds, or data structure choices.
   * **Level 3 (Scaffold):** Provides structural pseudocode blueprints while leaving implementation details to the student.
 * **🔁 Leitner Spaced Repetition:** Implements the classic 5-box memory engine where passing challenges advance ($1 \rightarrow 3 \rightarrow 7 \rightarrow 14 \rightarrow 30$ days) and failures reset to Box 1 for immediate reinforcement.
-* **📚 10 Curated Production Challenges:** 4 tracks spanning Two Pointers, Monotonic Stacks, Sliding Windows, Dynamic Programming, Streaming Generators, and Token Bucket Rate Limiters.
+* **10 practice challenges:** Four tracks spanning two pointers, monotonic stacks, sliding windows, dynamic programming, streaming generators and token bucket rate limiting.
 * **Obsidian workspace:** Graphite glass surfaces, muted blue accents, local typography, keyboard navigation, reduced-motion support, and layouts that adapt from desktop to mobile.
 
 ---
